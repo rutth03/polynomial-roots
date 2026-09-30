@@ -1,0 +1,22 @@
+# Compilados de Java
+*.class
+
+# Carpetas de binarios y salidas
+bin/
+out/
+build/
+target/
+
+# Configuración de VS Code (entorno local)
+.vscode/
+
+# Configuración de otros IDEs (Eclipse, IntelliJ)
+.idea/
+*.iml
+.settings/
+.classpath
+.project
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
