@@ -7,9 +7,6 @@ out/
 build/
 target/
 
-# Configuración de VS Code (entorno local)
-.vscode/
-
 # Configuración de otros IDEs (Eclipse, IntelliJ)
 .idea/
 *.iml
@@ -20,3 +17,8 @@ target/
 # Archivos del sistema operativo
 .DS_Store
 Thumbs.db
+
+# Ignorar el contenido de la carpeta lib, pero no la carpeta en sí
+lib/*
+!.gitignore
+!.gitkeep

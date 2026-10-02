@@ -1,0 +1,12 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Ejecutar Aplicacion",
+            "request": "launch",
+            "mainClass": "gui.MainFrameLauncher",
+            "vmArgs": "-Djava.library.path=\"${workspaceFolder}/lib\" --module-path \"${workspaceFolder}/lib\" --add-modules javafx.controls,javafx.fxml"
+        }
+    ]
+}
