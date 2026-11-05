@@ -2,7 +2,7 @@
 
 > **Estado del Proyecto:** 🛠️ *En Desarrollo (In Progress)*
 
-Aplicación interactiva para el análisis de polinomios y localización de raíces desarrollada para la asignatura **Programación Numérica** (Tecnicatura Universitaria en Programación - Universidad Nacional de Salta).
+Aplicación interactiva para el análisis de polinomios y localización de raíces desarrollada para la asignatura **Programación Numérica** (Tecnicatura Universitaria en Programación / Licenciatura en Analisis de Sistemas - Universidad Nacional de Salta).
 
 ---
 
@@ -33,8 +33,8 @@ Sigue estos pasos para preparar el entorno en tu computadora local:
 
 ### 1. Clonar el Repositorio
 ```bash
-git clone https://github.com/rutth03/polynomial-roots-java.git
-cd polynomial-roots-java
+git clone 
+cd polynomial-roots
 ```
 
 ### 2. Descargar JavaFX SDK
@@ -63,3 +63,20 @@ cd polynomial-roots-java
 2. En el panel lateral izquierdo, dirígete a la pestaña Run and Debug (Ctrl + Shift + D en Windows/Linux o Cmd + Shift + D en Mac).
 3. En el menú desplegable superior, confirma que esté seleccionada la configuración **Ejecutar Aplicación**.
 4. Presiona la tecla F5 o el botón verde de Play.
+
+## Estructura del Proyecto
+```
+src/
+ ├── gui/                  
+ ├── logic/
+ │    ├── OperacionesPolinomios.java   <-- Solo álgebra básica (Evaluar, derivar, divisiones: Horner, Cuadrática, General)
+ │    ├── RaicesSolver.java          <-- Métodos iterativos de aproximación (Newton, Halley)
+ │    ├── SturmSolver.java           <-- Sucesión de Sturm y separación de raíces (ítems h, i)
+ │    ├── BairstowSolver.java        <-- Método de Bairstow para raíces complejas/cuadráticas
+ │    └── AnalisisPolinomio.java     <-- Criterio de Gauss (raíces enteras/racionales) y Cotas (Lagrange, Laguerre y Newton)
+ ├── model/
+ │    ├── Intervalo.java
+ │    ├── Polinomio.java
+ │    └── RaizResult.java
+ └── Main.java
+```

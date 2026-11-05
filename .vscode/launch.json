@@ -3,6 +3,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "Main",
+            "request": "launch",
+            "mainClass": "Main",
+            "projectName": "PROYECTO - Raices de Polinomios_c67568d9"
+        },
+        {
+            "type": "java",
             "name": "Ejecutar Aplicacion",
             "request": "launch",
             "mainClass": "gui.MainFrameLauncher",
