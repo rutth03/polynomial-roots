@@ -33,7 +33,7 @@ Sigue estos pasos para preparar el entorno en tu computadora local:
 
 ### 1. Clonar el Repositorio
 ```bash
-git clone 
+git clone https://github.com/rutth03/polynomial-roots.git
 cd polynomial-roots
 ```
 
