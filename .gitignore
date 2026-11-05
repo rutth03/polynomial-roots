@@ -8,6 +8,7 @@ build/
 target/
 
 # Configuración de otros IDEs (Eclipse, IntelliJ)
+.vs/
 .idea/
 *.iml
 .settings/
