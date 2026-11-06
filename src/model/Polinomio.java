@@ -26,6 +26,7 @@ public class Polinomio {
         return coeficientes[indice];
     }
 
+    /* Algoritmo 1: Evaluación de P_n(x) en un valor alpha */
     public double evaluar(double x) {
         /* Evalúa el polinomio en x */
         double p = coeficientes[0]; // Empezamos con el coeficiente principal a_n
