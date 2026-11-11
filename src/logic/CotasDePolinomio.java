@@ -273,6 +273,7 @@ public class CotasDePolinomio{
     //------------------------MUESTRA------------------------
     //Junta las cuatro cotas Y las muestra
     public String intervalos(Polinomio p,int metodo){
+        String cadenaP;
         if(metodo<1 || metodo>3){
             return "El méto ingresado no es correcto";
         }
