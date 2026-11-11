@@ -2,6 +2,7 @@ import logic.OperacionesPolinomios;
 import logic.OperacionesPolinomios.ResultadoDivisionLineal;
 import logic.OperacionesPolinomios.ResultadoDivisionCuadratica;
 import model.Polinomio;
+import logic.CotasDePolinomio;
 
 public class Main {
     public static void main(String[] args) {
@@ -78,5 +79,14 @@ public class Main {
         Polinomio divisorCuadratico = new Polinomio(new double[]{1.0, -2.5, 7.0});
         Polinomio restoPolinomio = new Polinomio(new double[]{resE.resto1, resE.resto0});
         System.out.println("Forma equivalente: " + OperacionesPolinomios.formatearEquivalenciaPolinomica(pEx1, resE.cociente, divisorCuadratico, restoPolinomio));
+        
+        //PROBANDO LA PARTE DE LAS RAICES Y COTAS
+        System.out.println("\nProbando la parte de las raices y cotas con un polinomio dado");
+        Polinomio p = new Polinomio(new double[]{15, -62, -68, 14, 5});
+        AnalisisPolinomio analisis = new AnalisisPolinomio();
+        analisis.analizar(p);
+        System.out.println(analisis);
+        CotasDePolinomio cotas = new CotasDePolinomio();
+        System.out.println(cotas.intervalos(p, 1));   // 1 = Lagrange
     }
 }
