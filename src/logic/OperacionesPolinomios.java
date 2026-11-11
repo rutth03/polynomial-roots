@@ -3,7 +3,9 @@ package logic;
 import model.Polinomio;
 
 public class OperacionesPolinomios {
-    // Clase auxiliar para retornar cociente y resto en divisiones lineales
+    // ---------------------------------------------------------
+    // DTOs / Clases Auxiliares de Resultado
+    // ---------------------------------------------------------
     public static class ResultadoDivisionLineal {
         public Polinomio cociente;
         public double resto;
@@ -14,7 +16,6 @@ public class OperacionesPolinomios {
         }
     }
 
-    // Clase auxiliar para división cuadrática (Algoritmo 4)
     public static class ResultadoDivisionCuadratica {
         public Polinomio cociente;
         public double resto1; // Coeficiente de x en el resto
@@ -27,7 +28,6 @@ public class OperacionesPolinomios {
         }
     }
 
-    // Clase auxiliar para división general de polinomios (Algoritmo 5)
     public static class ResultadoDivisionGeneral {
         public Polinomio cociente;
         public Polinomio resto;
@@ -38,7 +38,24 @@ public class OperacionesPolinomios {
         }
     }
 
-    // Algoritmo 2: Horner para dividir P_n(x) por (x + b) 
+    public static class ResultadoHornerDoble {
+        private final double valor;
+        private final double derivada;
+
+        public ResultadoHornerDoble(double valor, double derivada) {
+            this.valor = valor;
+            this.derivada = derivada;
+        }
+
+        public double getValor() { return valor; }
+        public double getDerivada() { return derivada; }
+    }
+
+    // ---------------------------------------------------------
+    // Algoritmos de Operaciones y Divisiones
+    // ---------------------------------------------------------
+
+    /* Algoritmo 2: Horner para dividir P_n(x) por (x + b) */
     public static ResultadoDivisionLineal dividirHorner(Polinomio p, double b) {
         double[] coefs = p.getCoeficientes();
         int n = p.getGrado();
@@ -54,7 +71,7 @@ public class OperacionesPolinomios {
         return new ResultadoDivisionLineal(new Polinomio(c), resto);
     }
 
-    // Algoritmo 3: Horner para dividir P_n(x) por (ax + b) 
+    /* Algoritmo 3: Horner para dividir P_n(x) por (ax + b) */
     public static ResultadoDivisionLineal dividirHornerGral(Polinomio p, double alpha, double beta) {
         double b = beta / alpha;
         ResultadoDivisionLineal res = dividirHorner(p, b);
@@ -67,7 +84,7 @@ public class OperacionesPolinomios {
         return new ResultadoDivisionLineal(new Polinomio(coefsCociente), res.resto);
     }
 
-    // Algoritmo 4: División de P_n(x) por (x^2 + ax + b)
+    /* Algoritmo 4: División de P_n(x) por (x^2 + ax + b) */
     public static ResultadoDivisionCuadratica dividirHornerCuadratico(Polinomio p, double a, double b) {
         double[] P = p.getCoeficientes();
         int n = p.getGrado();
@@ -86,10 +103,7 @@ public class OperacionesPolinomios {
         return new ResultadoDivisionCuadratica(new Polinomio(C), r1, r0);
     }
 
-    /*
-     * Algoritmo 5: División general de polinomios
-     * Divide un polinomio de grado n entre otro de grado m (con n >= m).
-     */
+    /* Algoritmo 5: División general de polinomios -> Divide un polinomio de grado n entre otro de grado m (con n >= m). */
     public static ResultadoDivisionGeneral divisionGeneral(Polinomio pDividendo, Polinomio pDivisor) {
         double[] A = pDividendo.getCoeficientes();
         double[] B = pDivisor.getCoeficientes();
@@ -115,20 +129,33 @@ public class OperacionesPolinomios {
 
         return new ResultadoDivisionGeneral(new Polinomio(C), new Polinomio(restoCoefs));
     }
-    /*
-     * Devuelve la representación en cadena de la equivalencia para división lineal:
-     * P(x) = C(x) * (x + b) + Resto
-     */
+
+    /* Algoritmo 6: Horner Doble para evaluación simultánea de P(x) y P'(x) */
+    public static ResultadoHornerDoble hornerDoble(Polinomio pol, double alfa) {
+        double[] coefs = pol.getCoeficientes();
+        int n = pol.getGrado();
+
+        double p = coefs[0]; // P(alfa)
+        double dp = 0.0;     // P'(alfa)
+
+        for (int i = 1; i <= n; i++) {
+            dp = dp * alfa + p;
+            p = p * alfa + coefs[i];
+        }
+
+        return new ResultadoHornerDoble(p, dp);
+    }
+
+    /*  Devuelve la representación en cadena de la equivalencia para división lineal:
+        P(x) = C(x) * (x + b) + Resto */
     public static String formatearEquivalenciaLineal(Polinomio pOriginal, Polinomio cociente, double b, double resto) {
         // Si b es positivo, el binomio original era (x - b) o viceversa según cómo se ingresó
         String divisorStr = (b >= 0) ? "(x + " + b + ")" : "(x - " + (-b) + ")";
         return "P(x) = (" + cociente.toString() + ") * " + divisorStr + " + (" + resto + ")";
     }
 
-    /*
-     * Devuelve la representación en cadena de la equivalencia para división cuadrática o general:
-     * P(x) = C(x) * Q(x) + R(x)
-     */
+    /*  Devuelve la representación en cadena de la equivalencia para división cuadrática o general:
+        P(x) = C(x) * Q(x) + R(x) */
     public static String formatearEquivalenciaPolinomica(Polinomio pOriginal, Polinomio cociente, Polinomio divisor, Polinomio resto) {
         return "P(x) = (" + cociente.toString() + ") * (" + divisor.toString() + ") + (" + resto.toString() + ")";
     }

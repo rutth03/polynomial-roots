@@ -1,8 +1,10 @@
 import logic.OperacionesPolinomios;
 import logic.OperacionesPolinomios.ResultadoDivisionLineal;
+import logic.RaicesSolver;
 import logic.OperacionesPolinomios.ResultadoDivisionCuadratica;
 import model.Polinomio;
 import logic.CotasDePolinomio;
+import model.RaizResult;
 
 public class Main {
     public static void main(String[] args) {
@@ -88,5 +90,37 @@ public class Main {
         System.out.println(analisis);
         CotasDePolinomio cotas = new CotasDePolinomio();
         System.out.println(cotas.intervalos(p, 1));   // 1 = Lagrange
+
+        System.out.println("\n=== PRUEBAS DEL EJERCICIO N° 3 ===\n");
+        // 1. Definimos los coeficientes del polinomio P(x) = 3x^2 - x
+        // Almacenados en orden decreciente de grado: [a_2, a_1, a_0] -> [3.0, -1.0, 0.0]
+        double[] coeficientes = {3.0, -1.0, 0.0};
+        Polinomio p = new Polinomio(coeficientes);
+
+        // 2. Parámetros de aproximación
+        double x0 = 0.5;          // Valor inicial (cercano a la raíz positiva 0.333...)
+        double epsilon = 1e-3;    // Tolerancia de error 0.001
+        int maxIter = 50;         // Máximo de iteraciones permitidas
+
+        System.out.println("Polinomio: 3x^2 - x");
+        System.out.println("Punto inicial (x0): " + x0);
+        System.out.println("-----------------------------------------");
+
+        // --- MÉTODO DE NEWTON ---
+        try {
+            RaizResult raizNewton = RaicesSolver.newtonPolinomio(p, x0, epsilon, maxIter);
+            System.out.println("[Newton] Raíz encontrada: " + raizNewton.getValorRaiz() + " | Iteraciones: " + raizNewton.getIteraciones() + " | Error alcanzado: " + String.format("%.8f", raizNewton.getErrorAlcanzado()));
+        } catch (Exception e) {
+            System.out.println("[Newton] Error: " + e.getMessage());
+        }
+
+        // --- MÉTODO DE HALLEY ---
+        try {
+            RaizResult raizHalley = RaicesSolver.halleyPolinomio(p, x0, epsilon, maxIter);
+            System.out.println("[Halley] Raíz encontrada: " + raizHalley.getValorRaiz() + " | Iteraciones: " + raizHalley.getIteraciones() + " | Error alcanzado: " + String.format("%.8f", raizHalley.getErrorAlcanzado()));
+        } catch (Exception e) {
+            System.out.println("[Halley] Error: " + e.getMessage());
+        }
+        System.out.println("=========================================");
     }
 }
