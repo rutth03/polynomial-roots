@@ -549,7 +549,7 @@ public class MainFrame extends Application {
                 String nombre = metodoCota.getValue();
                 if (nombre == null)
                     throw new IllegalArgumentException("Falta elegir el m\u00e9todo de cota (Lagrange, Laguerre o Newton).");
-                int num = metodoCota.getItems().indexOf(nombre) + 1;
+                int num = numeroMetodoCota(nombre);
                 CotasDePolinomio cotas = new CotasDePolinomio();
                 double supPos = cotas.cotaSuperiorPositiva(p, num);
                 double infPos = cotas.cotaInferiorPositiva(p, num);
@@ -1500,7 +1500,7 @@ public class MainFrame extends Application {
         String nombre = metodoCota.getValue();
         if (nombre == null)
             throw new IllegalArgumentException("Falta elegir el m\u00e9todo de cota (Lagrange, Laguerre o Newton).");
-        int num = metodoCota.getItems().indexOf(nombre) + 1; // 1 = Lagrange, 2 = Laguerre, 3 = Newton
+        int num = numeroMetodoCota(nombre); // 1 = Lagrange, 2 = Laguerre, 3 = Newton
 
         CotasDePolinomio cotas = new CotasDePolinomio();
 
@@ -1548,6 +1548,20 @@ public class MainFrame extends Application {
         panelResultado.getChildren().add(tituloSeccion("Intervalos"));
         for (String linea : cotas.intervalos(p, num).split("\n"))
             panelResultado.getChildren().add(negrita(linea));
+    }
+
+    private int numeroMetodoCota(String nombre) {
+        switch (nombre) {
+            case "Lagrange":
+                return 1;
+            case "Laguerre":
+                return 2;
+            case "Newton":
+                return 3;
+            default:
+                throw new IllegalArgumentException(
+                        "Metodo de cota no valido: " + nombre);
+        }
     }
 
     /** Bloque de una cota: titulo, polinomio usado y resultado. */
