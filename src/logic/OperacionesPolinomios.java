@@ -159,4 +159,12 @@ public class OperacionesPolinomios {
     public static String formatearEquivalenciaPolinomica(Polinomio pOriginal, Polinomio cociente, Polinomio divisor, Polinomio resto) {
         return "P(x) = (" + cociente.toString() + ") * (" + divisor.toString() + ") + (" + resto.toString() + ")";
     }
+
+    /*Multiplica un polinomio por un escalar*/
+    public static Polinomio multiplicarEscalar(Polinomio p, double escalar){
+        double[] coef = p.getCoeficientes();
+        for(int i = 0; i < coef.length; i++)
+            coef[i] *= escalar;
+        return new Polinomio(coef);
+    }
 }
