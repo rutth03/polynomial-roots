@@ -4,12 +4,109 @@ import model.Polinomio;
 import java.util.ArrayList;
 import java.util.List;
 
+
 public class BairstowSolver {
-    //clase auxiliar para representar raíces complejas (a + bi)
-    public static class RaizCompleja{
+    private static double[] hornerDoble(double[] P, double r, double s){
+        int n = P.length - 1;
+        double[] resultado = new double[n + 1];
+
+        resultado[0] = P[0];
+
+        if(n >= 1)
+            resultado[1] = P[1] + r * resultado[0];
+
+        for(int i = 2; i <= n; i++)
+            resultado[i] = P[i] + r * resultado[i - 1] + s * resultado[i - 2];
+        
+        return resultado;
+    }
+
+    private static double[] iterBairstow(double[] P, double r, double s, double e, int maxIter){
+        int n = P.length - 1;
+        int iter = 0;
+
+        double errorR = Double.POSITIVE_INFINITY;
+        double errorS = Double.POSITIVE_INFINITY;
+
+        int reintentosDet = 0;
+
+        while((errorR > e || errorS > e) && iter <= maxIter){
+            iter++;
+
+            //calculo de b y c por Horner doble
+            double[] b = hornerDoble(P, r, s);
+            double[] c = hornerDoble(b, r, s);
+
+            //calculo del determinante
+            double det = c[n - 2] * c[n - 2] - c[n - 3] * c[n - 1];
+
+            if(Double.isFinite(det) && Math.abs(det) > 1e-12){
+                //calculo de correcciones
+                double dr = (-b[n - 1] * c[n - 2] + b[n] * c[n - 3]) / det;
+                double ds = (b[n - 1] * c[n - 1] - b[n] * c[n - 2]) / det;
+
+                if(!Double.isFinite(dr) || !Double.isFinite(ds)){
+                    throw new ArithmeticException("Correcciones no validas");
+                }
+
+                //actualizacion de r y s
+                r += dr;
+                s += ds;
+
+                //calculo de errores
+                errorR = (r != 0) ? Math.abs(dr / r) : Math.abs(dr);
+                errorS = (s != 0) ? Math.abs(ds / s) : Math.abs(ds);
+
+                reintentosDet = 0; // Reiniciar el contador de reintentos si se encuentra un determinante válido
+                
+            } else {
+                //si det = 0, modificar r y s
+                r += 1.0;
+                s += 1.0;
+
+                iter = 0;
+
+                reintentosDet++;
+
+                if(reintentosDet > maxIter){
+                    throw new ArithmeticException("No se pudo encontrar un determinante distinto de cero");
+                }
+            }
+        }
+        //comprobar convergencia
+        if(errorR > e || errorS > e){
+            throw new ArithmeticException("No se pudo converger a una solución en " + maxIter + " iteraciones");
+        }
+
+        //valores finales de r y s
+        return new double[]{r, s};
+    }
+
+    public static List<RaizCompleja> formulaCuad(double r, double s){
+        List<RaizCompleja> raices = new ArrayList<>();
+        double discriminante = r * r + 4.0 * s;
+
+        if(discriminante >= 0.0){
+            double x1 = (r + Math.sqrt(discriminante)) / 2.0;
+            double x2 = (r - Math.sqrt(discriminante)) / 2.0;
+
+            raices.add(new RaizCompleja(x1, 0.0));
+            raices.add(new RaizCompleja(x2, 0.0));
+        }else{
+            double real = r / 2.0;
+            double imaginaria = Math.sqrt(Math.abs(-discriminante)) / 2.0;
+
+            raices.add(new RaizCompleja(real, imaginaria));
+            raices.add(new RaizCompleja(real, -imaginaria));
+        }
+
+        return raices;
+    }
+
+    public static class RaizCompleja {
         private final double real;
         private final double imaginaria;
-        
+
         public RaizCompleja(double real, double imaginaria) {
             this.real = real;
             this.imaginaria = imaginaria;
@@ -18,150 +115,85 @@ public class BairstowSolver {
         public double getReal() {
             return real;
         }
+
         public double getImaginaria() {
             return imaginaria;
         }
-        
-        @Override 
+        /* 
+        @Override
         public String toString() {
-            if(Math.abs(imaginaria) < 1e-10) {
-                return String.format("%.4f", real);
-            } else if(Math.abs(imaginaria) > 0) {
-                return String.format("%.4f + %.4fi",real, imaginaria);
-            } else {
-                return String.format("%.4f - %.4fi", real, Math.abs(imaginaria));
-            }
+            double realMostrar = Math.abs(real) < 1e-10 ? 0.0 : real;
+            double imaginariaMostrar = Math.abs(imaginaria) < 1e-10 ? 0.0 : imaginaria;
+
+            return realMostrar + " + " + imaginariaMostrar + "i";
+        
+    }*/
+    @Override
+    public String toString() {
+        if (imaginaria == 0.0) {            // raíz real: solo el número
+            return num(real);
         }
+        String signo = imaginaria < 0 ? " - " : " + ";
+        String parteIm = num(Math.abs(imaginaria));
+        if (parteIm.equals("1")) parteIm = "";   // 1i se escribe i
+        if (real == 0.0) {                  // imaginaria pura
+            return (imaginaria < 0 ? "-" : "") + parteIm + "i";
+        }
+        return num(real) + signo + parteIm + "i";
     }
- //formula cuadratica para el factor: x^2 - r*x -s
- //retorna una lista con las dos raices obtenidas
-    public static List<RaizCompleja> formulaCuad(double r, double s){
-        List<RaizCompleja> raices = new ArrayList<>();
-        double disc = r * r + 4.0 * s; //dicriminante
 
-        if(disc > 0){
-            //raices reales distintas
-            double rReal1 = (r + Math.sqrt(disc)) / 2.0;
-            double rReal2 = (r - Math.sqrt(disc)) / 2.0;
-            raices.add(new RaizCompleja(rReal1, 0.0));
-            raices.add(new RaizCompleja(rReal2, 0.0));
-        }else{
-            //raices complejas conjugadas
-            double realPart = r / 2.0;
-            double imagPart = Math.sqrt(Math.abs(disc)) / 2.0;
-            raices.add(new RaizCompleja(realPart, imagPart));
-            raices.add(new RaizCompleja(realPart, -imagPart));
-        }
-        return raices;
+    // Valor exacto, sin redondear: solo quita el ".0" sobrante (3.0 -> 3)
+    private static String num(double v) {
+        if (Double.isNaN(v) || Double.isInfinite(v)) return String.valueOf(v);
+        return java.math.BigDecimal.valueOf(v).stripTrailingZeros().toPlainString();
     }
-//reduce el polinomio dividiendolo de forma iterativa por un factor cuadartico (x^2 - r*x - s) hasta extraer todas sus raices
-/*
-* @param p: polinomio a resolver
-* @param r0: valor inicial de r 
-* @param s0: valor inicial de s
-* @param e: tolerancia para el error relativo
-* @param maxIter: numero maximo de iteraciones
-* @return lista de raices (reales o complejas) del polinomio p
-*/ 
-    public static List<RaizCompleja> bairstow(Polinomio p, double r0, double s0, double e, int maxIter) {
-        List<RaizCompleja> raices = new ArrayList<>();
-        //clonamos los coeficientes del polinomio para no modificar el original
-        double [] coef = p.getCoeficientes().clone();
-        int n = coef.length - 1; //grado del polinomio
+}
 
-        double r = r0;
-        double s = s0;
-        int iter = 0;
-        //bucle principal: mientras el polinomio sea de grado mayor a 2
-        while(n > 2 && iter <= maxIter){
-            iter = 0;
-            double errorR, errorS;
-            //bucle iterativo de N-Raphson de dos variables para refinar r y s
-            do{
-                iter++;
-                //calculamos los coeficientes b y c por Horner
-                double[]b = calcularB(coef, r, s);
-                double[]c = calcularB(b, r, s);
-                //extraccion de restos de b[]
-                double bN1 = b[b.length - 1];
-                double bN0 = b[b.length - 2];
-                //extraccion de coeficientes de c[] 
-                double termC1 = c[c.length - 3 >= 0 ? c.length - 3 : 0];
-                double termC2 = c[c.length - 2];
-                double termC3 = c[c.length - 1];
-                //determinante del sistema lineal para hallar delta r y delta s
-                double det = (termC2 * termC2) - (termC1 * termC3);
+    private static double[] obtenerCociente(double[] P, double r, double s){
+        double[] b = hornerDoble(P, r, s);
+        int nvoGrado = P.length - 3; 
+        double[] cociente = new double[nvoGrado + 1];
 
-                if(Math.abs(det) > 1e-14){
-                    //calculo de las diferencias de dr y ds 
-                    double dr = (bN0 * termC3 - bN1 * termC2) / det;
-                    double ds = (bN1 * termC1 - bN0 * termC2) / det;
-                    //actualizamos r y s
-                    r += dr;
-                    s += ds;
-                    //calculo del error relativo
-                    errorR = Math.abs(dr / (r != 0 ? r : 1.0));
-                    errorS = Math.abs(ds / (s != 0 ? s : 1.0));
-                }else{
-                    //si det = 0, desplazamos r y s
-                    r += 1.0;
-                    s += 1.0;
-                    iter = 0;
-                    errorR = 1.0;
-                    errorS = 1.0;
-                }
-                //criterios de parada: tolerancia alcanzada o limite de iteraciones superado
-                if((errorR <= e && errorS <= e) || iter > maxIter){
-                    break;
-                }
-            }while(true);
-            //una vez refinados r y s, calculamos las raices del factor cuadratico
-            List<RaizCompleja> raicesParciales = formulaCuad(r, s);
-            raices.addAll(raicesParciales);
-            //actualizamos el polinomio dividiendolo por el factor cuadratico (x^2 - r*x - s)
-            n = n - 2;
-            coef = obtenerCocientePolinomio(coef, r, s);
-        }
-        //si el polinomio restante es de grado 2 o 1, resolvemos directamente
-        if(iter <= maxIter){
-            if(n == 2){
-                //grado 2: usamos la formula cuadratica
-                double rFin = -coef[1] / coef[0];
-                double sFin = -coef[2] / coef[0];
-
-                raices.addAll(formulaCuad(rFin, sFin));
-            }else if(n == 1){
-                //grado 1: solucion unica
-                double xUnica = -coef[1] / coef[0];
-                raices.add(new RaizCompleja(xUnica, 0.0));
-            }
-        }
-        return raices;
-    }
-//metodo auxiliar para calcular los coeficientes b[] de Horner
-    private static double[] calcularB(double[] coef, double r, double s){
-        int n = coef.length - 1;
-        double[] b = new double[n + 1];
-        b[0] = coef[0];
-
-        if(n >= 1){
-            b[1] = coef[1] + r * b[0];
-        }
-
-        for(int i = 2; i <= n; i++){
-            b[i] = coef[i] + r * b[i - 1] + s * b[i - 2];
-        }
-        return b;
-    }
-//metodo auxiliar para obtener el cociente del polinomio al dividirlo por el factor cuadratico (x^2 - r*x - s)
-    private static double[] obtenerCocientePolinomio(double[] coef, double r, double s){
-        int n = coef.length - 1;
-        double[] b = calcularB(coef, r, s);
-        double[] cociente = new double[n - 1];
-
-        for(int i = 0; i < n - 1; i++){
+        for(int i = 0; i <= nvoGrado; i++)
             cociente[i] = b[i];
-        }
+        
         return cociente;
+    }
+
+    public static List<RaizCompleja> bairstow(Polinomio p, double r, double s, double e, int maxIter){
+        double[] P = p.getCoeficientes();
+        int n = p.getGrado();
+        List<RaizCompleja> raices = new ArrayList<>();
+
+        while(n > 2){
+            //buscar r y s usando iteraciones de bairstow
+            double[] resultado = iterBairstow(P, r, s, e, maxIter);
+            r = resultado[0];
+            s = resultado[1];
+
+            //raices del factor cuadratico
+            List<RaizCompleja> nuevasRaices = formulaCuad(r, s);
+            raices.addAll(nuevasRaices);
+
+            //cociente del polinomio 
+            P = obtenerCociente(P, r, s);
+            n -= 2;
+        }
+
+        //resolver el polinomio restante
+        if(n == 2){
+            //normalizar el polinomio para obtener x^2 - r*s - s
+            r = -P[1] / P[0];
+            s = -P[2] / P[0];
+
+            List<RaizCompleja> nuevasRaices = formulaCuad(r, s);
+            raices.addAll(nuevasRaices);
+        } else if(n == 1){
+            //resolver el polinomio lineal
+            double x = -P[1] / P[0];
+            raices.add(new RaizCompleja(x, 0));
+        }
+
+        return raices;
     }
 }
