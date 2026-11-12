@@ -119,15 +119,35 @@ public class BairstowSolver {
         public double getImaginaria() {
             return imaginaria;
         }
-
+        /* 
         @Override
         public String toString() {
             double realMostrar = Math.abs(real) < 1e-10 ? 0.0 : real;
             double imaginariaMostrar = Math.abs(imaginaria) < 1e-10 ? 0.0 : imaginaria;
 
             return realMostrar + " + " + imaginariaMostrar + "i";
+        
+    }*/
+    @Override
+    public String toString() {
+        if (imaginaria == 0.0) {            // raíz real: solo el número
+            return num(real);
         }
+        String signo = imaginaria < 0 ? " - " : " + ";
+        String parteIm = num(Math.abs(imaginaria));
+        if (parteIm.equals("1")) parteIm = "";   // 1i se escribe i
+        if (real == 0.0) {                  // imaginaria pura
+            return (imaginaria < 0 ? "-" : "") + parteIm + "i";
+        }
+        return num(real) + signo + parteIm + "i";
     }
+
+    // Valor exacto, sin redondear: solo quita el ".0" sobrante (3.0 -> 3)
+    private static String num(double v) {
+        if (Double.isNaN(v) || Double.isInfinite(v)) return String.valueOf(v);
+        return java.math.BigDecimal.valueOf(v).stripTrailingZeros().toPlainString();
+    }
+}
 
     private static double[] obtenerCociente(double[] P, double r, double s){
         double[] b = hornerDoble(P, r, s);
