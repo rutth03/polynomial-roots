@@ -597,14 +597,14 @@ public class MainFrame extends Application {
                 double infNeg = cotas.cotaInferiorNegativa(p, num);
                 double supNeg = cotas.cotaSuperiorNegativa(p, num);
                 String nota = "";
-                if (supPos != 0) {
+                if (esIntervaloValido(infPos, supPos)) {
                     g.agregarBanda(infPos, supPos, GraficoPolinomio.VERDE);
                     g.agregarPunto(infPos, "(" + GraficoPolinomio.num(infPos) + ", 0)", GraficoPolinomio.VERDE);
                     g.agregarPunto(supPos, "(" + GraficoPolinomio.num(supPos) + ", 0)", GraficoPolinomio.VERDE);
                 } else {
                     nota += "No hay raíces positivas.  ";
                 }
-                if (infNeg != 0) {
+                if (esIntervaloValido(infNeg, supNeg)) {
                     g.agregarBanda(infNeg, supNeg, GraficoPolinomio.ROJO);
                     g.agregarPunto(infNeg, "(" + GraficoPolinomio.num(infNeg) + ", 0)", GraficoPolinomio.ROJO);
                     g.agregarPunto(supNeg, "(" + GraficoPolinomio.num(supNeg) + ", 0)", GraficoPolinomio.ROJO);
@@ -1758,9 +1758,15 @@ public class MainFrame extends Application {
     /** los intervalos de las cotas: [infNeg, supNeg] (si hay negativas) y [infPos, supPos] (si hay positivas). */
     private static List<double[]> tramosCotas(double infNeg, double supNeg, double infPos, double supPos) {
         List<double[]> tramos = new ArrayList<>();
-        if (infNeg != 0) tramos.add(new double[]{infNeg, supNeg});
-        if (supPos != 0) tramos.add(new double[]{infPos, supPos});
+        if (esIntervaloValido(infNeg, supNeg)) tramos.add(new double[]{infNeg, supNeg});
+        if (esIntervaloValido(infPos, supPos)) tramos.add(new double[]{infPos, supPos});
         return tramos;
+    }
+
+    private static boolean esIntervaloValido(double desde, double hasta) {
+        return desde != 0 && hasta != 0
+                && Double.isFinite(desde) && Double.isFinite(hasta)
+                && desde < hasta;
     }
 
     /* "Negativas: [-5/2, -2/5]   Positivas: [1/2, 3]" (o "sin negativas" / "sin positivas"). */

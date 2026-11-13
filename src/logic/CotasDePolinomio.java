@@ -7,6 +7,10 @@ public class CotasDePolinomio{
     //-----------------METODOS DE COTAS------------------
     public double cotaLagrange(Polinomio p) {
         double cota;
+        if (!tieneCoeficienteNegativo(p)) {
+            System.out.println("No hay raíces positivas, por lo que no se puede calcular la cota de Lagrange");
+            return 0;
+        }
         if(coeficientePrincipal(p)<0) {
            p=cambiarSigno(p);         
         }
@@ -18,14 +22,15 @@ public class CotasDePolinomio{
            System.out.println("Se encontro la cota superior por Lagrange que es: " + cota);
            return cota;
         }
-        else{
-            System.out.println("No hay raíces positivas, por lo que no se puede calcular la cota de Lagrange");
-            return 0;
-        }
+        return 0;
     }
 
     public double cotaLaguerre(Polinomio p) {
         if(p.getGrado()==0){//una constante no se puede dividir con Horner ni tiene raíces que acotar
+            return 0;
+        }
+        if (!tieneCoeficienteNegativo(p)) {
+            System.out.println("No hay raíces positivas, por lo que no se puede calcular la cota de Laguerre");
             return 0;
         }
         double a_0= coeficientePrincipal(p);
@@ -43,6 +48,10 @@ public class CotasDePolinomio{
 
     public double cotaNewton(Polinomio p){
         if(p.getGrado()==0){//una constante no se puede dividir con Horner ni tiene raíces que acotar
+            return 0;
+        }
+        if (!tieneCoeficienteNegativo(p)) {
+            System.out.println("No hay raíces positivas, por lo que no se puede calcular la cota de Newton");
             return 0;
         }
         double a_0= coeficientePrincipal(p);
@@ -143,6 +152,16 @@ public class CotasDePolinomio{
             }
         }
         return -1; //Da -1 si no hay coeficientes negativos
+    }
+
+    private boolean tieneCoeficienteNegativo(Polinomio p) {
+        double signo = coeficientePrincipal(p) < 0 ? -1 : 1;
+        for (int i = 0; i <= p.getGrado(); i++) {
+            if (signo * p.getCoeficiente(i) < 0) {
+                return true;
+            }
+        }
+        return false;
     }
     private double coeficienteNegativoMaximo(Polinomio p) {
         double max=0;

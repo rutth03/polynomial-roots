@@ -1,0 +1,1 @@
+import logic.CotasDePolinomio; import model.Polinomio; public class CotasCheck { public static void main(String[] args) { Polinomio p = new Polinomio(new double[]{2, 3, 1}); CotasDePolinomio c = new CotasDePolinomio(); System.out.println("L=" + c.cotaLagrange(p)); System.out.println("N=" + c.cotaNewton(p)); System.out.println(c.intervalos(p, 1)); } }
