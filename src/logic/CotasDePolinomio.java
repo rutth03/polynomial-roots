@@ -277,7 +277,6 @@ public class CotasDePolinomio{
         if(metodo<1 || metodo>3){
             return "El méto ingresado no es correcto";
         }
-        String cadena=" ";
         double supPositiva=cotaSuperiorPositiva(p,metodo);
         double infPositiva=cotaInferiorPositiva(p,metodo);
         double infNegativa=cotaInferiorNegativa(p,metodo);

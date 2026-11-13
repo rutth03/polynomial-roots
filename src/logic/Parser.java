@@ -78,13 +78,12 @@ public class Parser {
         return p;
     }
 
-    /** Quita ceros a la izquierda (de mayor grado) y limpia ruido numerico. */
+    /** Quita coeficientes principales con ruido numerico; conserva constantes pequeñas. */
     private static double[] normalizar(double[] asc) {
         int n = asc.length - 1;
         while (n > 0 && Math.abs(asc[n]) < EPS) n--;
         if (n < 0) return new double[]{0};
         double[] r = Arrays.copyOf(asc, n + 1);
-        if (n == 0 && Math.abs(r[0]) < EPS) r[0] = 0;
         return r;
     }
 
@@ -210,8 +209,8 @@ public class Parser {
     public Parser dividir(Parser o) {
         if (!o.esConstante())
             throw new ArithmeticException("Solo se puede dividir entre constantes");
-        if (Math.abs(o.c[0]) < EPS)
-            throw new ArithmeticException("Division entre cero");
+        if (Math.abs(o.c[0]) < 1e-15)
+            throw new IllegalArgumentException("División por cero no permitida");
         return multiplicarEscalar(1.0 / o.c[0]);
     }
 
@@ -410,13 +409,24 @@ public class Parser {
                 case "sin": r = Math.sin(a); break;
                 case "cos": r = Math.cos(a); break;
                 case "tan":
-                case "tg":  r = Math.tan(a); break;
-                case "ln":  r = Math.log(a); break;
-                case "log": r = Math.log10(a); break;
-                default:    r = Math.sqrt(a); break; // raiz, sqrt
+                case "tg":
+                    if (Math.abs(Math.cos(a)) < 1e-12)
+                        throw new IllegalArgumentException("tg() indefinida (asíntota en π/2 + kπ)");
+                    r = Math.tan(a);
+                    break;
+                case "ln":
+                case "log":
+                    if (a <= 0)
+                        throw new IllegalArgumentException("ln() / log() solo admite valores estrictamente mayores a 0");
+                    r = nombre.equals("ln") ? Math.log(a) : Math.log10(a);
+                    break;
+                default:
+                    if (a < 0)
+                        throw new IllegalArgumentException("raiz() no admite números negativos en los reales");
+                    r = Math.sqrt(a); // raiz, sqrt
             }
             if (Double.isNaN(r) || Double.isInfinite(r))
-                throw new ArithmeticException(nombre + "(" + a + ") no esta definido");
+                throw new IllegalArgumentException(nombre + "(" + a + ") no esta definido");
             return constante(r);
         }
     }

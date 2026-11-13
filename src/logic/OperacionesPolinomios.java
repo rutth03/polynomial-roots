@@ -73,6 +73,12 @@ public class OperacionesPolinomios {
 
     /* Algoritmo 3: Horner para dividir P_n(x) por (ax + b) */
     public static ResultadoDivisionLineal dividirHornerGral(Polinomio p, double alpha, double beta) {
+        if (alpha == 0) {
+            if (beta == 0)
+                throw new IllegalArgumentException("No se puede dividir por el polinomio nulo (0)");
+            throw new IllegalArgumentException(
+                    "El divisor Q(x) debe tener al menos grado 1 (no se admite división por una constante en Horner)");
+        }
         double b = beta / alpha;
         ResultadoDivisionLineal res = dividirHorner(p, b);
         

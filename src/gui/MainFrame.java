@@ -678,6 +678,44 @@ public class MainFrame extends Application {
         }
     }
 
+    /** Mismo bucle que la tabla de metodoIterativo; devuelve la raiz o NaN si no converge. */
+    private static double aproximarRaiz(Polinomio p, double x0, double eps, int maxIter, boolean halley) {
+        Polinomio segunda = p.derivar().derivar();
+        double xi = x0;
+        double anterior = x0;
+        for (int i = 0; i <= maxIter; i++) {
+            if (!Double.isFinite(xi)) return Double.NaN;
+            ResultadoHornerDoble r = OperacionesPolinomios.hornerDoble(p, xi);
+            double valor = r.getValor();
+            double deriv = r.getDerivada();
+
+            if (i > 0 && Math.abs(xi - anterior) < eps && Math.abs(valor) < eps) return xi;
+            if (Math.abs(valor) == 0) return xi;
+            if (i == maxIter) return Double.NaN;
+
+            double siguiente;
+            if (halley) {
+                double den = 2.0 * deriv * deriv - valor * segunda.evaluar(xi);
+                if (Math.abs(den) < 1e-24) {
+                    if (Math.abs(valor) < eps || Math.abs(xi - anterior) < eps) {
+                        return xi;
+                    }
+                    return Double.NaN;
+                }
+                siguiente = xi - (2.0 * valor * deriv) / den;
+            } else {
+                if (Math.abs(deriv) < 1e-14) {
+                    if (Math.abs(valor) < eps) return xi;
+                    return Double.NaN;
+                }
+                siguiente = xi - valor / deriv;
+            }
+            anterior = xi;
+            xi = siguiente;
+        }
+        return Double.NaN;
+    }
+
     /** Texto -> model.Polinomio. Parser se usa solo como parser (y ya devuelve el polinomio normalizado). */
     private Polinomio parsear(String texto, String nombre) {
         try {
@@ -1001,8 +1039,8 @@ public class MainFrame extends Application {
         // --- Tabla ---
         GridPane t = new GridPane();
         String[] encabezados = halley
-                ? new String[]{"i", "x_{i}", "P(x_{i})", "P'(x_{i})", "P''(x_{i})", "|x_{i} - x_{i-1}|"}
-                : new String[]{"i", "x_{i}", "P(x_{i})", "P'(x_{i})", "|x_{i} - x_{i-1}|"};
+                ? new String[]{"i", "x_{i}", "|P(x_{i})|", "P'(x_{i})", "P''(x_{i})", "|x_{i} - x_{i-1}|"}
+                : new String[]{"i", "x_{i}", "|P(x_{i})|", "P'(x_{i})", "|x_{i} - x_{i-1}|"};
         for (int c = 0; c < encabezados.length; c++)
             t.add(celdaNewton(formula(encabezados[c], 18), 0, c), c, 0);
 
@@ -1029,20 +1067,44 @@ public class MainFrame extends Application {
                 t.add(celdaNewton(textoCelda(celdas[c]), fila, c), c, fila);
             fila++;
 
-            if (i > 0 && dif < epsilon && Math.abs(valor) < epsilon) {   // mismo corte que RaicesSolver
+            // Condición estricta: tanto el cambio en x como el valor de P deben ser menores a epsilon
+            if (i > 0 && dif < epsilon && Math.abs(valor) < epsilon) {   
+                convergio = true;
+                break;
+            }
+            if (valor == 0) {              
                 convergio = true;
                 break;
             }
             if (i == maxIter) break;
 
-            try {
-                double siguiente = siguienteX(p, xi, halley);   // la formula la aplica RaicesSolver
-                xAnterior = xi;
-                xi = siguiente;
-            } catch (RuntimeException ex) {
-                motivoCorte = ex.getMessage() + " (en x = " + formatoNewton(xi) + "). Probá con otro x0.";
-                break;
+            double siguiente;
+            if (halley) {
+                double den = 2.0 * deriv * deriv - valor * deriv2;
+                if (Math.abs(den) < 1e-24) {
+                    if (Math.abs(valor) < epsilon || Math.abs(xi - xAnterior) < epsilon) {
+                        convergio = true;
+                        break;
+                    }
+                    motivoCorte = "El denominador de Halley ≈ 0 en x = " + formatoNewton(xi)
+                            + ": el método no puede continuar. Probá con otro x0.";
+                    break;
+                }
+                siguiente = xi - (2.0 * valor * deriv) / den;
+            } else {
+                if (Math.abs(deriv) < 1e-14) {
+                    if (Math.abs(valor) < epsilon) {
+                        convergio = true;
+                        break;
+                    }
+                    motivoCorte = "P'(x) ≈ 0 en x = " + formatoNewton(xi)
+                            + ": el método no puede continuar. Probá con otro x0.";
+                    break;
+                }
+                siguiente = xi - valor / deriv;
             }
+            xAnterior = xi;
+            xi = siguiente;
         }
 
         panelResultado.getChildren().add(t);
@@ -1051,9 +1113,8 @@ public class MainFrame extends Application {
         if (convergio) {
             RaizResult rr = resolver(p, x0, epsilon, maxIter, halley);
             panelResultado.getChildren().add(textoMono(
-                    "Raíz aproximada: x ≈ " + formatoNewton(rr.getValorRaiz())
-                    + "   (" + rr.getIteraciones() + " iteraciones, error "
-                    + formatoNewton(rr.getErrorAlcanzado()) + ")"));
+                    "Raíz aproximada: x ≈ " + formatoNewton(xi)
+                    + "   (" + (fila - 2) + " iteraciones)"));
         } else if (motivoCorte != null) {
             panelResultado.getChildren().add(textoMono(motivoCorte));
         } else {
@@ -1767,7 +1828,12 @@ public class MainFrame extends Application {
         double[] qc = q.getCoeficientes(); // de mayor a menor grado
         int n = p.getGrado();
         int m = q.getGrado();
-        if (m == 0 && qc[0] == 0) throw new ArithmeticException("Q(x) no puede ser cero");
+        if (m == 0) {
+            if (qc[0] == 0)
+                throw new IllegalArgumentException("No se puede dividir por el polinomio nulo (0)");
+            throw new IllegalArgumentException(
+                    "El divisor Q(x) debe tener al menos grado 1 (no se admite división por una constante en Horner)");
+        }
 
         Polinomio cociente;
         Polinomio resto;
@@ -1775,15 +1841,7 @@ public class MainFrame extends Application {
         int tipo; // 1 = Ruffini, 2 = Horner cuadratico, 0 = sin tabla
         double[] sumas = null; //fila de abajo de la tabla: cociente + resto (lo devuelve OperacionesPolinomios)
 
-        if (m == 0) {
-            // Q(x) constante: divisionGeneral devolveria un resto vacio (y Polinomio no admite 0 coeficientes)
-            double[] cc = p.getCoeficientes();
-            for (int i = 0; i < cc.length; i++) cc[i] /= qc[0];
-            cociente = new Polinomio(cc);
-            resto = new Polinomio(new double[]{0.0});
-            metodoTxt = "División por una constante";
-            tipo = 0;
-        } else if (m == 1 && n >= 1) {
+        if (m == 1 && n >= 1) {
             OperacionesPolinomios.ResultadoDivisionLineal r =
                     OperacionesPolinomios.dividirHornerGral(p, qc[0], qc[1]);
             cociente = r.cociente;
