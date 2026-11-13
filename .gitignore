@@ -22,4 +22,10 @@ Thumbs.db
 # Ignorar el contenido de la carpeta lib, pero no la carpeta en sí
 lib/*
 !.gitignore
-!.gitkeep
+!.gitkeep 
+
+/lib/
+*.dll
+*.class
+.vs/
+*.jar

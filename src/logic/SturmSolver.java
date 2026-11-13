@@ -18,9 +18,10 @@ public class SturmSolver{
      * f1(x) = P'(x)
      * fk(x) = - resto(f_{k-2}, f_{k-1}) * lambda_k
      */
+
     public ArrayList<Polinomio> generarSucesion(Polinomio p){
         ArrayList<Polinomio> sturm = new ArrayList<>();
-        mcd = null;
+        mcd=null;
         //f0(x) = P(x)
         sturm.add(p);
 

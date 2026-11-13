@@ -589,7 +589,7 @@ public class MainFrame extends Application {
                 // Cotas: marca los extremos con (x, 0) y sombrea los intervalos
                 String nombre = metodoCota.getValue();
                 if (nombre == null)
-                    throw new IllegalArgumentException("Falta elegir el método de cota (Lagrange, Laguerre o Newton).");
+                throw new IllegalArgumentException("Falta elegir el m\u00e9todo de cota (Lagrange, Laguerre o Newton).");
                 int num = numeroMetodoCota(nombre);
                 CotasDePolinomio cotas = new CotasDePolinomio();
                 double supPos = cotas.cotaSuperiorPositiva(p, num);
@@ -1356,8 +1356,8 @@ public class MainFrame extends Application {
             throw new ArithmeticException("P(x) es constante: no tiene raíces que acotar");
         String nombre = metodoCota.getValue();
         if (nombre == null)
-            throw new IllegalArgumentException("Falta elegir el método de cota (Lagrange, Laguerre o Newton).");
-        int num = numeroMetodoCota(nombre);
+            throw new IllegalArgumentException("Falta elegir el m\u00e9todo de cota (Lagrange, Laguerre o Newton).");
+        int num = numeroMetodoCota(nombre); // 1 = Lagrange, 2 = Laguerre, 3 = Newton
 
         CotasDePolinomio cotas = new CotasDePolinomio();
 
