@@ -162,10 +162,7 @@ public class Parser {
         this.c = parse(expresion).c;
     }
 
-    // ------------------------------------------------------------------
-    // Operaciones (devuelven un polinomio nuevo, no modifican este)
-    // ------------------------------------------------------------------
-
+    
     /** Evalua el polinomio en x (Horner). */
     public double evaluar(double x) {
         double r = 0;

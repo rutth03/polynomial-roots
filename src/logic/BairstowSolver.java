@@ -6,6 +6,13 @@ import java.util.List;
 
 
 public class BairstowSolver {
+    private static final List<double[]> tabla = new ArrayList<>();      // tabla - filas de la tabla
+    private static final List<double[]> polinomios = new ArrayList<>(); // tabla - polinomio de cada factor
+    private static int factorActual = 0;                                // tabla - factor actual
+
+    public static List<double[]> getTabla() { return tabla; }               // tabla - devuelve las filas
+    public static List<double[]> getPolinomios() { return polinomios; }     // tabla - devuelve los polinomios
+
     private static double[] hornerDoble(double[] P, double r, double s){
         int n = P.length - 1;
         double[] resultado = new double[n + 1];
@@ -17,7 +24,7 @@ public class BairstowSolver {
 
         for(int i = 2; i <= n; i++)
             resultado[i] = P[i] + r * resultado[i - 1] + s * resultado[i - 2];
-        
+
         return resultado;
     }
 
@@ -29,9 +36,13 @@ public class BairstowSolver {
         double errorS = Double.POSITIVE_INFINITY;
 
         int reintentosDet = 0;
+        int pasosTotales = 0;                       // tabla - contador de pasos
+        final int topePasos = 10 * maxIter + 100;   // tabla - maximo de pasos
 
         while((errorR > e || errorS > e) && iter <= maxIter){
             iter++;
+            pasosTotales++;                         // tabla - cuenta el paso
+            double rAntes = r, sAntes = s;          // tabla - r y s de la fila
 
             //calculo de b y c por Horner doble
             double[] b = hornerDoble(P, r, s);
@@ -57,9 +68,15 @@ public class BairstowSolver {
                 errorR = (r != 0) ? Math.abs(dr / r) : Math.abs(dr);
                 errorS = (s != 0) ? Math.abs(ds / s) : Math.abs(ds);
 
+                // tabla - guarda la fila
+                tabla.add(new double[]{factorActual, iter - 1, rAntes, sAntes, dr, ds, errorR, errorS, 0});
+
                 reintentosDet = 0; // Reiniciar el contador de reintentos si se encuentra un determinante válido
-                
+
             } else {
+                // tabla - guarda la fila (det = 0)
+                tabla.add(new double[]{factorActual, iter - 1, rAntes, sAntes, 1.0, 1.0, Double.NaN, Double.NaN, 1});
+
                 //si det = 0, modificar r y s
                 r += 1.0;
                 s += 1.0;
@@ -71,6 +88,11 @@ public class BairstowSolver {
                 if(reintentosDet > maxIter){
                     throw new ArithmeticException("No se pudo encontrar un determinante distinto de cero");
                 }
+            }
+
+            // tabla - corta si se pasa del maximo
+            if(pasosTotales >= topePasos){
+                throw new ArithmeticException("No se pudo converger: se cortó tras " + pasosTotales + " pasos");
             }
         }
         //comprobar convergencia
@@ -119,14 +141,14 @@ public class BairstowSolver {
         public double getImaginaria() {
             return imaginaria;
         }
-        /* 
+        /*
         @Override
         public String toString() {
             double realMostrar = Math.abs(real) < 1e-10 ? 0.0 : real;
             double imaginariaMostrar = Math.abs(imaginaria) < 1e-10 ? 0.0 : imaginaria;
 
             return realMostrar + " + " + imaginariaMostrar + "i";
-        
+
     }*/
     @Override
     public String toString() {
@@ -151,12 +173,12 @@ public class BairstowSolver {
 
     private static double[] obtenerCociente(double[] P, double r, double s){
         double[] b = hornerDoble(P, r, s);
-        int nvoGrado = P.length - 3; 
+        int nvoGrado = P.length - 3;
         double[] cociente = new double[nvoGrado + 1];
 
         for(int i = 0; i <= nvoGrado; i++)
             cociente[i] = b[i];
-        
+
         return cociente;
     }
 
@@ -165,7 +187,14 @@ public class BairstowSolver {
         int n = p.getGrado();
         List<RaizCompleja> raices = new ArrayList<>();
 
+        tabla.clear();          // tabla - limpia filas
+        polinomios.clear();     // tabla - limpia polinomios
+        factorActual = 0;       // tabla - reinicia factor
+
         while(n > 2){
+            factorActual++;             // tabla - nuevo factor
+            polinomios.add(P.clone());  // tabla - guarda el polinomio
+
             //buscar r y s usando iteraciones de bairstow
             double[] resultado = iterBairstow(P, r, s, e, maxIter);
             r = resultado[0];
@@ -175,10 +204,12 @@ public class BairstowSolver {
             List<RaizCompleja> nuevasRaices = formulaCuad(r, s);
             raices.addAll(nuevasRaices);
 
-            //cociente del polinomio 
+            //cociente del polinomio
             P = obtenerCociente(P, r, s);
             n -= 2;
         }
+
+        polinomios.add(P.clone());      // tabla - guarda el resto
 
         //resolver el polinomio restante
         if(n == 2){

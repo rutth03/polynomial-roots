@@ -29,16 +29,14 @@ import logic.CotasDePolinomio;
 import logic.OperacionesPolinomios;
 import logic.OperacionesPolinomios.ResultadoHornerDoble;
 import logic.Parser;
+import logic.RaicesSolver;
+import logic.SturmSolver;                 
 import model.Polinomio;
+import model.RaizResult;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class MainFrame extends Application {
 
@@ -68,12 +66,13 @@ public class MainFrame extends Application {
             "-fx-font-family: 'Consolas', 'Monospaced'; -fx-font-size: 18px;";
 
     // Metodos disponibles
-    private static final String M_HORNER = "Horner / Ruffini (divisi\u00f3n)";
+    private static final String M_HORNER = "Horner / Ruffini (división)";
     private static final String M_NEWTON = "Newton";
     private static final String M_HALLEY = "Halley";
-    private static final String M_RAICES = "Ra\u00edces enteras y racionales";
+    private static final String M_RAICES = "Raíces enteras y racionales";
     private static final String M_BAIRSTOW = "Bairstow";
-    private static final String M_COTAS = "Cotas de las ra\u00edces";
+    private static final String M_COTAS = "Cotas de las raíces";
+    private static final String M_STURM = "Sturm";   
 
     private ComboBox<String> metodo;  // metodo elegido
     private TextField campo;        // P(x)
@@ -89,6 +88,10 @@ public class MainFrame extends Application {
     private HBox grupoRS;           // r0 y s0 (Bairstow)
     private Label etiquetaCota;     // etiqueta "Cota por:"
     private ComboBox<String> metodoCota; // Lagrange / Laguerre / Newton (solo en Cotas)
+    private TextField campoPuntos;  //  - Sturm: puntos alfa (opcional)
+    private HBox grupoSturm;        //  fila con el campo de puntos de Sturm
+    private Button botonIntervalo;  //  Sturm: "Calcular cotas"
+    private Label etiquetaIntervalo; // Sturm: muestra el intervalo valido al lado del boton
     private TextField activo;       // campo donde escriben los botones
     private VBox panelResultado;    // contenido del resultado
     private Label error;
@@ -111,13 +114,13 @@ public class MainFrame extends Application {
         Region espacio = new Region();
         HBox.setHgrow(espacio, Priority.ALWAYS);
 
-        Button minimizar = botonVentana("\u2014", false);
+        Button minimizar = botonVentana("—", false);
         minimizar.setOnAction(e -> stage.setIconified(true));
 
-        Button maximizar = botonVentana("\u25a1", false);
+        Button maximizar = botonVentana("□", false);
         maximizar.setOnAction(e -> alternarMaximizar(stage, pantalla));
 
-        Button cerrar = botonVentana("\u2715", true);
+        Button cerrar = botonVentana("✕", true);
         cerrar.setOnAction(e -> stage.close());
 
         HBox barra = new HBox(espacio, minimizar, maximizar, cerrar);
@@ -141,7 +144,7 @@ public class MainFrame extends Application {
         });
 
         // ---------- Titulo centrado (fondo = fondo principal) ----------
-        Label titulo = new Label("Ra\u00edces de Polinomios");
+        Label titulo = new Label("Raíces de Polinomios");
         titulo.setStyle("-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: "
                 + COLOR_ENCABEZADO + ";");
         HBox zonaTitulo = new HBox(titulo);
@@ -150,10 +153,10 @@ public class MainFrame extends Application {
         zonaTitulo.setStyle("-fx-background-color: " + COLOR_FONDO + ";");
 
         // ---------- Selector de metodo ----------
-        Label etiquetaMetodo = new Label("Operaci\u00f3n:");
+        Label etiquetaMetodo = new Label("Operación:");
         etiquetaMetodo.setStyle("-fx-font-size: 18px;");
         metodo = new ComboBox<>();
-        metodo.getItems().addAll(M_HORNER, M_NEWTON, M_HALLEY, M_BAIRSTOW, M_RAICES, M_COTAS);
+        metodo.getItems().addAll(M_HORNER, M_NEWTON, M_HALLEY, M_BAIRSTOW, M_RAICES, M_COTAS, M_STURM);  
         metodo.setValue(M_HORNER);
         metodo.setStyle("-fx-font-size: 16px;");
         etiquetaCota = new Label("Cota por:");
@@ -162,7 +165,11 @@ public class MainFrame extends Application {
         metodoCota.getItems().addAll("Lagrange", "Laguerre", "Newton");
         metodoCota.setValue("Lagrange");
         metodoCota.setStyle("-fx-font-size: 16px;");
-        HBox filaMetodo = new HBox(10, etiquetaMetodo, metodo, etiquetaCota, metodoCota);
+        botonIntervalo = boton("Calcular cotas", this::verIntervalo);
+        botonIntervalo.setMinWidth(140);
+        etiquetaIntervalo = new Label();
+        etiquetaIntervalo.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + COLOR_ENCABEZADO + ";");
+        HBox filaMetodo = new HBox(10, etiquetaMetodo, metodo, etiquetaCota, metodoCota, botonIntervalo, etiquetaIntervalo);
         filaMetodo.setAlignment(Pos.CENTER_LEFT);
 
         // ---------- Entradas: P(x) y Q(x) ----------
@@ -199,19 +206,19 @@ public class MainFrame extends Application {
         campoEps.setPrefColumnCount(10);
 
         campoIter = new TextField("50");
-        campoIter.setPromptText("m\u00e1x. iteraciones");
+        campoIter.setPromptText("máx. iteraciones");
         campoIter.setStyle(ESTILO_CAMPO);
         campoIter.setPrefColumnCount(5);
 
 
-        Label lx0 = new Label("x\u2080 =");
-        Label leps = new Label("\u03b5 =");
-        Label liter = new Label("M\u00e1x. iter. =");
+        Label lx0 = new Label("x₀ =");
+        Label leps = new Label("ε =");
+        Label liter = new Label("Máx. iter. =");
         lx0.setStyle("-fx-font-size: 18px;");
         leps.setStyle("-fx-font-size: 18px;");
         liter.setStyle("-fx-font-size: 18px;");
-        Label lr0 = new Label("r\u2080 =");
-        Label ls0 = new Label("s\u2080 =");
+        Label lr0 = new Label("r₀ =");
+        Label ls0 = new Label("s₀ =");
         lr0.setStyle("-fx-font-size: 18px;");
         ls0.setStyle("-fx-font-size: 18px;");
         grupoX0 = new HBox(10, lx0, campoX0);
@@ -219,6 +226,15 @@ public class MainFrame extends Application {
         grupoRS = new HBox(10, lr0, campoR0, ls0, campoS0);
         grupoRS.setAlignment(Pos.CENTER_LEFT);
         parametrosNewton = new HBox(10, grupoX0, grupoRS, leps, campoEps, liter, campoIter);
+        campoPuntos = new TextField();
+        campoPuntos.setPromptText("Toc\u00e1 \"Calcular cotas\": los puntos por defecto aparecen ac\u00e1 y los pod\u00e9s cambiar");   
+        campoPuntos.setDisable(true);   
+        campoPuntos.setStyle(ESTILO_CAMPO);
+        Label lPuntos = new Label("Puntos α =");
+        lPuntos.setStyle("-fx-font-size: 18px;");
+        grupoSturm = new HBox(10, lPuntos, campoPuntos);
+        grupoSturm.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(campoPuntos, Priority.ALWAYS);
         parametrosNewton.setAlignment(Pos.CENTER_LEFT);
 
         // Enter (la tecla) en cualquier campo ejecuta el calculo
@@ -229,6 +245,7 @@ public class MainFrame extends Application {
         campoS0.setOnAction(e -> calcular());
         campoEps.setOnAction(e -> calcular());
         campoIter.setOnAction(e -> calcular());
+        campoPuntos.setOnAction(e -> calcular());   
 
         // Los botones escriben en el ultimo campo en el que estuvo el cursor
         activo = campo;
@@ -247,6 +264,9 @@ public class MainFrame extends Application {
         campoS0.focusedProperty().addListener((o, a, enfocado) -> {
             if (enfocado) activo = campoS0;
         });
+        campoPuntos.focusedProperty().addListener((o, a, enfocado) -> {   
+            if (enfocado) activo = campoPuntos;
+        });
 
         Label etiquetaP = new Label("P(x) =");
         etiquetaP.setStyle("-fx-font-size: 18px;");
@@ -259,6 +279,7 @@ public class MainFrame extends Application {
         formulario.add(etiquetaQ, 0, 1);
         formulario.add(campoQ, 1, 1);
         formulario.add(parametrosNewton, 0, 2, 2, 1);
+        formulario.add(grupoSturm, 0, 3, 2, 1);   
         GridPane.setHgrow(campo, Priority.ALWAYS);
         GridPane.setHgrow(campoQ, Priority.ALWAYS);
 
@@ -273,7 +294,7 @@ public class MainFrame extends Application {
         teclado.add(boton("sen()", () -> insertarFuncion("sen")), 0, 0);
         teclado.add(boton("cos()", () -> insertarFuncion("cos")), 1, 0);
         teclado.add(boton("tg()", () -> insertarFuncion("tg")), 2, 0);
-        teclado.add(boton("\u03c0", () -> insertar("\u03c0")), 3, 0);
+        teclado.add(boton("π", () -> insertar("π")), 3, 0);
         teclado.add(boton("x", () -> insertar("x")), 4, 0);
         teclado.add(boton("^", () -> insertar("^")), 5, 0);
         teclado.add(boton("(", () -> insertar("(")), 6, 0);
@@ -320,10 +341,13 @@ public class MainFrame extends Application {
         graficar.setStyle(ESTILO_BOTON + " -fx-font-weight: bold;");
         botonGraficar = graficar;
         graficar.setDisable(true);   // se habilita solo despues de calcular con Enter
-        for (TextField tf : new TextField[]{campo, campoQ, campoX0, campoEps, campoIter, campoR0, campoS0})
+        for (TextField tf : new TextField[]{campo, campoQ, campoX0, campoEps, campoIter, campoR0, campoS0, campoPuntos})
             tf.textProperty().addListener((o, a, b) -> graficar.setDisable(true));
         metodo.valueProperty().addListener((o, a, b) -> graficar.setDisable(true));
         metodoCota.valueProperty().addListener((o, a, b) -> graficar.setDisable(true));
+        campo.textProperty().addListener((o, a, b) -> desactivarPuntos());
+        metodo.valueProperty().addListener((o, a, b) -> desactivarPuntos());
+        metodoCota.valueProperty().addListener((o, a, b) -> desactivarPuntos());
         Region separadorEnter = new Region();
         HBox.setHgrow(separadorEnter, Priority.ALWAYS);
         HBox filaEnter = new HBox(enter, separadorEnter, graficar);
@@ -341,6 +365,7 @@ public class MainFrame extends Application {
 
         // Cambio de metodo: muestra/oculta los campos que corresponden
         metodo.valueProperty().addListener((o, a, b) -> {
+            if (M_STURM.equals(b)) metodoCota.setValue("Newton");  
             actualizarModo();
             error.setText("");
             panelResultado.getChildren().clear();
@@ -350,7 +375,7 @@ public class MainFrame extends Application {
         VBox raiz = new VBox(barra, zonaTitulo, contenido);
         raiz.setStyle("-fx-background-color: " + COLOR_FONDO + ";");
 
-        stage.setTitle("Ra\u00edces de Polinomios");
+        stage.setTitle("Raíces de Polinomios");
         stage.setScene(new Scene(raiz, ancho, alto));
         stage.setX(pantalla.getMinX() + (pantalla.getWidth() - ancho) / 2);
         stage.setY(pantalla.getMinY() + (pantalla.getHeight() - alto) / 2);
@@ -368,6 +393,10 @@ public class MainFrame extends Application {
 
     private boolean esBairstow() {
         return M_BAIRSTOW.equals(metodo.getValue());
+    }
+
+    private boolean esSturm() {   
+        return M_STURM.equals(metodo.getValue());
     }
 
     private boolean esCotas() {
@@ -398,11 +427,18 @@ public class MainFrame extends Application {
         grupoX0.setManaged(iterativo);
         grupoRS.setVisible(bairstow);
         grupoRS.setManaged(bairstow);
-        boolean cotas = esCotas();
+        boolean sturm = esSturm();               
+        boolean cotas = esCotas() || sturm;     
         etiquetaCota.setVisible(cotas);
         etiquetaCota.setManaged(cotas);
         metodoCota.setVisible(cotas);
         metodoCota.setManaged(cotas);
+        grupoSturm.setVisible(sturm);            
+        grupoSturm.setManaged(sturm);            
+        botonIntervalo.setVisible(sturm);        
+        botonIntervalo.setManaged(sturm);        
+        etiquetaIntervalo.setVisible(sturm);     
+        etiquetaIntervalo.setManaged(sturm);     
         if (!horner && activo == campoQ) {
             activo = campo;
         }
@@ -475,7 +511,7 @@ public class MainFrame extends Application {
         try {
             String texto = campo.getText().trim();
             if (texto.isEmpty())
-                throw new IllegalArgumentException("Falta P(x): escrib\u00ed un polinomio.");
+                throw new IllegalArgumentException("Falta P(x): escribí un polinomio.");
             Polinomio p = parsear(texto, "P(x)"); // valida P(x)
 
             if (esIterativo()) {
@@ -486,10 +522,12 @@ public class MainFrame extends Application {
                 metodoBairstow(p);
             } else if (esCotas()) {
                 metodoCotas(p);
+            } else if (esSturm()) {   
+                metodoSturm(p);
             } else {
                 String textoQ = campoQ.getText().trim();
                 if (textoQ.isEmpty())
-                    throw new IllegalArgumentException("Falta Q(x): escrib\u00ed el divisor.");
+                    throw new IllegalArgumentException("Falta Q(x): escribí el divisor.");
                 Polinomio q = parsear(textoQ, "Q(x)");
                 dividirPolinomios(p, q);
             }
@@ -498,6 +536,10 @@ public class MainFrame extends Application {
             panelResultado.getChildren().clear();
             String msg = ex.getMessage() != null ? ex.getMessage() : ex.toString();
             error.setText("Error: " + msg);
+        } catch (Throwable ex) {   
+            ex.printStackTrace();
+            panelResultado.getChildren().clear();
+            error.setText("Error interno: " + ex + "  (¿están actualizadas todas las clases de logic? Hacé Clean and Build)");
         }
     }
 
@@ -510,7 +552,7 @@ public class MainFrame extends Application {
         try {
             String textoP = campo.getText().trim();
             if (textoP.isEmpty())
-                throw new IllegalArgumentException("Falta P(x): escrib\u00ed un polinomio.");
+                throw new IllegalArgumentException("Falta P(x): escribí un polinomio.");
             Polinomio p = parsear(textoP, "P(x)");
             if (esConstante(p))
                 throw new ArithmeticException("P(x) es constante: no hay nada que graficar");
@@ -518,18 +560,17 @@ public class MainFrame extends Application {
             GraficoPolinomio g = new GraficoPolinomio(p, "P(x) = " + texto(p));
 
             if (esIterativo()) {
-                // Newton / Halley: marca la raiz a la que se aproxima
-                boolean halley = esHalley();
+                // Newton / Halley: marca la raiz que encuentra RaicesSolver
                 if (campoX0.getText().trim().isEmpty())
-                    throw new IllegalArgumentException("Falta x0: escrib\u00ed el valor inicial.");
+                    throw new IllegalArgumentException("Falta x0: escribí el valor inicial.");
                 double x0 = parsearNumero(campoX0.getText().trim(), "x0");
                 double eps = leerEpsilon();
                 int maxIter = leerMaxIter();
-                double raiz = aproximarRaiz(p, x0, eps, maxIter, halley);
-                if (Double.isNaN(raiz)) {
-                    g.setNota("No convergi\u00f3: no hay ra\u00edz que marcar. Prob\u00e1 con otro x0.");
-                } else {
+                try {
+                    double raiz = resolver(p, x0, eps, maxIter, esHalley()).getValorRaiz();
                     g.agregarPunto(raiz, "(" + GraficoPolinomio.num(raiz) + ", 0)", GraficoPolinomio.ROJO);
+                } catch (RuntimeException ex) {   // derivada ~ 0 o no convergio
+                    g.setNota("No convergió: no hay raíz que marcar. Probá con otro x0.");
                 }
             } else if (esRaices()) {
                 // Enteras (rojo) y racionales (naranja)
@@ -543,13 +584,13 @@ public class MainFrame extends Application {
                     g.agregarPunto(x, "(" + analisis.aFraccion(x) + ", 0)", GraficoPolinomio.NARANJA);
                     cantidad++;
                 }
-                if (cantidad == 0) g.setNota("P(x) no tiene ra\u00edces enteras ni racionales.");
+                if (cantidad == 0) g.setNota("P(x) no tiene raíces enteras ni racionales.");
             } else if (esCotas()) {
                 // Cotas: marca los extremos con (x, 0) y sombrea los intervalos
                 String nombre = metodoCota.getValue();
                 if (nombre == null)
-                    throw new IllegalArgumentException("Falta elegir el m\u00e9todo de cota (Lagrange, Laguerre o Newton).");
-                int num = metodoCota.getItems().indexOf(nombre) + 1;
+                    throw new IllegalArgumentException("Falta elegir el método de cota (Lagrange, Laguerre o Newton).");
+                int num = numeroMetodoCota(nombre);
                 CotasDePolinomio cotas = new CotasDePolinomio();
                 double supPos = cotas.cotaSuperiorPositiva(p, num);
                 double infPos = cotas.cotaInferiorPositiva(p, num);
@@ -561,48 +602,36 @@ public class MainFrame extends Application {
                     g.agregarPunto(infPos, "(" + GraficoPolinomio.num(infPos) + ", 0)", GraficoPolinomio.VERDE);
                     g.agregarPunto(supPos, "(" + GraficoPolinomio.num(supPos) + ", 0)", GraficoPolinomio.VERDE);
                 } else {
-                    nota += "No hay ra\u00edces positivas.  ";
+                    nota += "No hay raíces positivas.  ";
                 }
                 if (infNeg != 0) {
                     g.agregarBanda(infNeg, supNeg, GraficoPolinomio.ROJO);
                     g.agregarPunto(infNeg, "(" + GraficoPolinomio.num(infNeg) + ", 0)", GraficoPolinomio.ROJO);
                     g.agregarPunto(supNeg, "(" + GraficoPolinomio.num(supNeg) + ", 0)", GraficoPolinomio.ROJO);
                 } else {
-                    nota += "No hay ra\u00edces negativas.";
+                    nota += "No hay raíces negativas.";
                 }
                 g.setNota(nota.trim());
             } else if (esBairstow()) {
                 // Bairstow: marca las raices reales y avisa de las complejas (no se pueden dibujar en el eje x)
                 if (campoR0.getText().trim().isEmpty())
-                    throw new IllegalArgumentException("Falta r0: escrib\u00ed el valor inicial de r.");
+                    throw new IllegalArgumentException("Falta r0: escribí el valor inicial de r.");
                 if (campoS0.getText().trim().isEmpty())
-                    throw new IllegalArgumentException("Falta s0: escrib\u00ed el valor inicial de s.");
-                final double r0 = parsearNumero(campoR0.getText().trim(), "r0");
-                final double s0 = parsearNumero(campoS0.getText().trim(), "s0");
-                final double epsB = leerEpsilon();
-                final int maxIterB = leerMaxIter();
-                final AtomicReference<List<RaizCompleja>> salida = new AtomicReference<>();
-                final AtomicReference<Throwable> falla = new AtomicReference<>();
-                Thread hilo = new Thread(() -> {
-                    try {
-                        salida.set(BairstowSolver.bairstow(p, r0, s0, epsB, maxIterB));
-                    } catch (Throwable t) {
-                        falla.set(t);
-                    }
-                });
-                hilo.setDaemon(true);
-                hilo.start();
+                    throw new IllegalArgumentException("Falta s0: escribí el valor inicial de s.");
+                double r0 = parsearNumero(campoR0.getText().trim(), "r0");
+                double s0 = parsearNumero(campoS0.getText().trim(), "s0");
+                double epsB = leerEpsilon();
+                int maxIterB = leerMaxIter();
+                List<RaizCompleja> raicesB = null;
                 try {
-                    hilo.join(2000);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
+                    raicesB = BairstowSolver.bairstow(p, r0, s0, epsB, maxIterB);
+                } catch (ArithmeticException ex) {
+                    g.setNota("Bairstow no convergió: no hay raíces que marcar.");
                 }
-                if (hilo.isAlive() || falla.get() != null || salida.get() == null) {
-                    g.setNota("Bairstow no termin\u00f3 o no convergi\u00f3: no hay ra\u00edces que marcar.");
-                } else {
+                if (raicesB != null) {
                     List<Double> marcadas = new ArrayList<>();
                     StringBuilder complejas = new StringBuilder();
-                    for (RaizCompleja z : salida.get()) {
+                    for (RaizCompleja z : raicesB) {
                         if (Math.abs(z.getImaginaria()) < 1e-9) {
                             boolean repetida = false;
                             for (double m : marcadas) if (Math.abs(m - z.getReal()) < 1e-6) repetida = true;
@@ -613,21 +642,30 @@ public class MainFrame extends Application {
                             }
                         } else if (z.getImaginaria() > 0) {
                             if (complejas.length() > 0) complejas.append("   ");
-                            complejas.append(GraficoPolinomio.num(z.getReal())).append(" \u00b1 ")
+                            complejas.append(GraficoPolinomio.num(z.getReal())).append(" ± ")
                                      .append(GraficoPolinomio.num(z.getImaginaria())).append("i");
                         }
                     }
-                    String nota = marcadas.isEmpty() ? "No hay ra\u00edces reales." : "";
+                    String nota = marcadas.isEmpty() ? "No hay raíces reales." : "";
                     if (complejas.length() > 0)
                         nota += (nota.isEmpty() ? "" : "  ") + "Complejas (no se dibujan): " + complejas;
                     g.setNota(nota);
                 }
             }
+            if (esSturm()) {   
+                for (double[] iv : sturmIntervalos)
+                    g.agregarBanda(iv[0], iv[1], GraficoPolinomio.VERDE);
+                for (double r : sturmRaicesExactas)   // raices exactas encontradas: punto rojo
+                    g.agregarPunto(r, "(" + fraccionTexto(r) + ", 0)", GraficoPolinomio.ROJO);
+                g.setNota("Cotas: " + sturmTextoCotas + "     "
+                        + (sturmIntervalos.isEmpty() ? "No hay raíces reales en los puntos elegidos."
+                           : "Verde: en cada intervalo hay una raíz."));
+            }
             // Horner / Ruffini: solo la curva
 
             g.ajustarRango();
             Stage ventana = new Stage();
-            ventana.setTitle("Gr\u00e1fico \u2013 " + metodo.getValue());
+            ventana.setTitle("Gráfico – " + metodo.getValue());
             ventana.setScene(new Scene(g, 900, 600));
             ventana.show();
             ventana.toFront();
@@ -638,34 +676,6 @@ public class MainFrame extends Application {
             String msg = ex.getMessage() != null ? ex.getMessage() : ex.toString();
             error.setText("Error al graficar: " + msg);
         }
-    }
-
-    /** Mismo bucle que la tabla de metodoIterativo; devuelve la raiz o NaN si no converge. */
-    private static double aproximarRaiz(Polinomio p, double x0, double eps, int maxIter, boolean halley) {
-        Polinomio segunda = p.derivar().derivar();
-        double xi = x0;
-        double anterior = x0;
-        for (int i = 0; i <= maxIter; i++) {
-            if (!Double.isFinite(xi)) return Double.NaN;
-            ResultadoHornerDoble r = OperacionesPolinomios.hornerDoble(p, xi);
-            double valor = r.getValor();
-            double deriv = r.getDerivada();
-            if (i > 0 && Math.abs(xi - anterior) < eps) return xi;
-            if (valor == 0) return xi;
-            if (i == maxIter) return Double.NaN;
-            double siguiente;
-            if (halley) {
-                double den = 2 * deriv * deriv - valor * segunda.evaluar(xi);
-                if (Math.abs(den) < 1e-14) return Double.NaN;
-                siguiente = xi - 2 * valor * deriv / den;
-            } else {
-                if (Math.abs(deriv) < 1e-14) return Double.NaN;
-                siguiente = xi - valor / deriv;
-            }
-            anterior = xi;
-            xi = siguiente;
-        }
-        return Double.NaN;
     }
 
     /** Texto -> model.Polinomio. Parser se usa solo como parser (y ya devuelve el polinomio normalizado). */
@@ -707,103 +717,90 @@ public class MainFrame extends Application {
     // Raices enteras y racionales (Teorema de la raiz racional)
     // ------------------------------------------------------------------
 
+    // =====================- INICIO: raices enteras y racionales =====================
+    // - antes este metodo calculaba todo con BigInteger (horner, esRaizRacional, escalaEntera,
+    // - divisores, mcd); ahora solo muestra los pasos que guarda AnalisisPolinomio
     /**
-     * Raices enteras y racionales de P(x):
+     * Raices enteras y racionales de P(x). Todo lo calcula AnalisisPolinomio;
+     * aca solo se muestran los pasos que guarda (getTablaEnteras, getTablaRacionales, divisores...).
      *  1) Enteras: a0, D = divisores de a0, evaluacion por Horner y polinomio factorizado.
-     *  2) Racionales: a0 y an, D(a0), D(an), combinaciones p/q, solo las no enteras,
-     *     evaluacion por Horner y esquema de la factorizacion (sin calcularla).
-     * Todo se hace con enteros exactos (BigInteger), sin errores de redondeo.
+     *  2) Racionales: a0 y an, D(a0), D(an), candidatos p/q no enteros, evaluacion por Horner
+     *     y factorizacion.
      */
     private void raicesPolinomio(Polinomio p) {
         if (esConstante(p))
-            throw new ArithmeticException("P(x) es constante: no tiene ra\u00edces");
+            throw new ArithmeticException("P(x) es constante: no tiene raíces");
+        //- limite: AnalisisPolinomio busca los divisores probando uno por uno: con coeficientes muy grandes tardaria demasiado
+        for (double c : p.getCoeficientes())
+            if (Math.abs(c) > 1e8)
+                throw new IllegalArgumentException(
+                        "Los coeficientes son demasiado grandes (más de 100.000.000) para buscar raíces enteras y racionales");
 
-        // Coeficientes enteros (si hace falta se multiplica por k; las raices no cambian)
-        double[] desc = p.getCoeficientes();
-        long k = escalaEntera(desc);
-        BigInteger[] a = new BigInteger[desc.length];
-        for (int i = 0; i < desc.length; i++)
-            a[i] = BigInteger.valueOf(Math.round(desc[i] * k));
-
-        // Si a0 = 0, x = 0 es raiz: se saca el factor x^m
-        int m = 0;
-        while (a[a.length - 1 - m].signum() == 0) m++;
-        BigInteger[] r = Arrays.copyOf(a, a.length - m);   // polinomio sin el factor x^m
-        boolean hayMas = r.length > 1;                      // todavia tiene x
+        // - calculo: lo hace AnalisisPolinomio y se leen los pasos guardados
+        AnalisisPolinomio analisis = new AnalisisPolinomio();
+        List<Integer> enteras = analisis.raicesEnteras(p);
+        Polinomio entero = analisis.getPolinomioEntero();          // P(x) con coeficientes enteros
+        if (entero == null)
+            throw new IllegalArgumentException(
+                    "Los coeficientes no son racionales (por ejemplo tienen sen, ln, π...): "
+                    + "no se pueden analizar raíces enteras ni racionales");
+        Polinomio sinCeros = analisis.getPolinomioSinCeros();      // sin el factor x^m
+        int m = analisis.getMultiplicidadCero();
+        List<Integer> divA0 = new ArrayList<>(analisis.getDivisoresA0());
+        List<double[]> pruebasEnteras = new ArrayList<>(analisis.getTablaEnteras());
+        List<Double> racionales = analisis.raicesRacionales(p);
+        boolean hayMas = sinCeros.getGrado() > 0;                  // todavia tiene x
+        double a0 = sinCeros.getCoeficiente(sinCeros.getGrado());
+        double an = sinCeros.getCoeficiente(0);
 
         // ---------------- Raices enteras ----------------
-        panelResultado.getChildren().add(tituloSeccion("Ra\u00edces enteras de un Polinomio"));
+        panelResultado.getChildren().add(tituloSeccion("Raíces enteras de un Polinomio"));
         panelResultado.getChildren().add(textoMono("P(x) = " + texto(p)));
-        if (k != 1)
-            panelResultado.getChildren().add(textoMono(
-                    "Con coeficientes enteros: " + k + " \u00b7 P(x) = " + aPolinomio(a)));
+        if (entero != p)   // AnalisisPolinomio lo multiplico por k para que tenga coeficientes enteros
+            panelResultado.getChildren().add(textoMono("Con coeficientes enteros: "
+                    + formato(entero.getCoeficiente(0) / p.getCoeficiente(0)) + " · P(x) = " + texto(entero)));
         if (m > 0)
             panelResultado.getChildren().add(textoMono(
-                    "El t\u00e9rmino independiente es 0: x = 0 es ra\u00edz (multiplicidad " + m
+                    "El término independiente es 0: x = 0 es raíz (multiplicidad " + m
                     + "). Se saca factor x" + (m > 1 ? "^" + m : "") + "."));
 
-        List<BigInteger> raices = new ArrayList<>();
-        List<Long> divA0 = new ArrayList<>();
-        BigInteger a0 = r[r.length - 1];
-        BigInteger an = r[0];
-
         if (hayMas) {
-            divA0 = divisores(a0);
-            panelResultado.getChildren().add(filaSub("a_{0} =", a0.toString()));
-            panelResultado.getChildren().add(filaSub("D =", llaveConSignos(divA0)));
-
+            panelResultado.getChildren().add(filaSub("a_{0} =", formato(a0)));
+            panelResultado.getChildren().add(filaSub("D =", llave(divA0)));
             panelResultado.getChildren().add(negrita("Evaluando por Horner"));
             FlowPane evaluaciones = new FlowPane(30, 6);
-            for (long d : divA0) {
-                for (int signo : new int[]{1, -1}) {
-                    BigInteger x = BigInteger.valueOf(signo * d);
-                    BigInteger[] b = horner(r, x);                 // el ultimo es P(x)
-                    boolean esRaiz = b[b.length - 1].signum() == 0;
-                    Label l = textoCelda("P(" + x + ") " + (esRaiz ? "=" : "\u2260") + " 0");
-                    if (esRaiz) {
-                        l.setStyle(FUENTE_MONO + "-fx-font-weight: bold;");
-                    }
-                    evaluaciones.getChildren().add(l);
-                }
-            }
+            for (double[] prueba : pruebasEnteras)   //pruebas guardadas por AnalisisPolinomio
+                evaluaciones.getChildren().add(celdaPrueba(formato(prueba[0]), prueba[1] == 1));
             panelResultado.getChildren().add(evaluaciones);
         }
 
-        // Raices enteras: las calcula AnalisisPolinomio (el 0 ya se trato arriba como factor x^m)
-        AnalisisPolinomio analisis = new AnalisisPolinomio();
-        for (int e : analisis.raicesEnteras(p)) {
-            if (e != 0) raices.add(BigInteger.valueOf(e));
-        }
-
-        // Polinomio factorizado (dividiendo por Horner las veces que sea raiz)
+        //factorizado con OperacionesPolinomios.dividirHorner (antes horner con BigInteger)
         List<String> factores = new ArrayList<>();
         if (m > 0) factores.add(m == 1 ? "x" : "x^{" + m + "}");
-        BigInteger[] q = r;
-        for (BigInteger x : raices) {
+        Polinomio q = sinCeros;
+        for (int e : enteras) {
+            if (e == 0) continue;   // el 0 ya esta en x^m
             int mult = 0;
-            while (q.length > 1) {
-                BigInteger[] b = horner(q, x);
-                if (b[b.length - 1].signum() != 0) break;
-                q = Arrays.copyOf(b, b.length - 1);
+            while (q.getGrado() > 0 && esRaizDe(q, e)) {
+                q = OperacionesPolinomios.dividirHorner(q, -e).cociente;
                 mult++;
             }
             if (mult > 0) {
-                String f = "(x " + (x.signum() < 0 ? "+ " + x.negate() : "- " + x) + ")";
+                String f = "(x " + (e < 0 ? "+ " + (-e) : "- " + e) + ")";
                 factores.add(mult == 1 ? f : f + "^{" + mult + "}");
             }
         }
         if (factores.isEmpty()) {
-            panelResultado.getChildren().add(textoMono("P(x) no tiene ra\u00edces enteras."));
+            panelResultado.getChildren().add(textoMono("P(x) no tiene raíces enteras."));
         } else {
             String prefijo = "";
             String cola = "";
-            if (q.length == 1) {
-                BigInteger c = q[0];
-                if (c.equals(BigInteger.ONE)) prefijo = "";
-                else if (c.equals(BigInteger.ONE.negate())) prefijo = "-";
-                else prefijo = c + " ";
+            if (esConstante(q)) {
+                double c = q.getCoeficiente(0);
+                if (Math.abs(c + 1) < 1e-9) prefijo = "-";
+                else if (Math.abs(c - 1) > 1e-9) prefijo = formato(c) + " ";
             } else {
-                cola = " (" + aPolinomio(q) + ")";
+                cola = " (" + texto(q) + ")";
             }
             panelResultado.getChildren().add(
                     formula("P(x) = " + prefijo + String.join(" ", factores) + cola, 20));
@@ -812,196 +809,106 @@ public class MainFrame extends Application {
         if (!hayMas) return;   // nada mas que analizar
 
         // ---------------- Raices racionales ----------------
+        List<Integer> divAn = analisis.getDivisoresAn();
+        List<double[]> pruebasRacionales = analisis.getTablaRacionales();
+
         panelResultado.getChildren().add(new Separator());
-        panelResultado.getChildren().add(tituloSeccion("Ra\u00edces Racionales de un Polinomio"));
-        panelResultado.getChildren().add(filaSub("a_{0} =", a0.toString()));
-        panelResultado.getChildren().add(filaSub("a_{n} =", an.toString()));
+        panelResultado.getChildren().add(tituloSeccion("Raíces Racionales de un Polinomio"));
+        panelResultado.getChildren().add(filaSub("a_{0} =", formato(a0)));
+        panelResultado.getChildren().add(filaSub("a_{n} =", formato(an)));
 
-        List<Long> divP = divA0;
-        List<Long> divQ = divisores(an);
-        panelResultado.getChildren().add(filaSub("D_{a0} =", llaveConSignos(divP)));
-        panelResultado.getChildren().add(filaSub("D_{an} =", llaveConSignos(divQ)));
-
-        // Todas las combinaciones p/q (reducidas y sin repetir)
-        List<long[]> candidatos = new ArrayList<>();
-        Set<String> vistos = new HashSet<>();
-        for (long den : divQ) {
-            for (long num : divP) {
-                long g = mcd(num, den);
-                long n = num / g;
-                long d = den / g;
-                for (int signo : new int[]{1, -1}) {
-                    if (vistos.add((signo * n) + "/" + d)) candidatos.add(new long[]{signo * n, d});
-                }
-            }
+        if (divAn.isEmpty()) {   //AnalisisPolinomio no busca fracciones si an = 1 o -1
+            panelResultado.getChildren().add(textoMono(
+                    "a_n = ±1: las raíces racionales son enteras. P(x) no tiene raíces racionales (no enteras)."));
+            return;
         }
+        panelResultado.getChildren().add(filaSub("D_{a0} =", llave(divA0)));
+        panelResultado.getChildren().add(filaSub("D_{an} =", llave(divAn)));
+
+        // candidatos: divisores de a0 y fracciones p/q que probo AnalisisPolinomio
         List<String> todos = new ArrayList<>();
-        List<long[]> noEnteros = new ArrayList<>();
-        for (long[] c : candidatos) {
-            todos.add(fraccion(c));
-            if (c[1] != 1) noEnteros.add(c);
-        }
+        for (int d : divA0) todos.add(String.valueOf(d));
+        for (double[] prueba : pruebasRacionales) todos.add(analisis.aFraccion(prueba[0]));
         panelResultado.getChildren().add(filaSub("D =", "{" + String.join(", ", todos) + "}"));
 
-        // Raices racionales (no enteras): las calcula AnalisisPolinomio
-        List<String> encontradas = new ArrayList<>();
-        List<Double> racionales = new ArrayList<>();
-        for (double x : analisis.raicesRacionales(p)) {
-            encontradas.add(analisis.aFraccion(x));
-            racionales.add(x);
-        }
-
-        if (noEnteros.isEmpty()) {
-            panelResultado.getChildren().add(textoMono("P(x) no tiene ra\u00edces racionales."));
+        if (pruebasRacionales.isEmpty()) {
+            panelResultado.getChildren().add(textoMono("P(x) no tiene raíces racionales."));
             return;
         }
 
         panelResultado.getChildren().add(negrita("Analizando por Horner"));
         final int MAX_MOSTRAR = 300;
         FlowPane evaluaciones = new FlowPane(30, 6);
-        int mostrados = 0;
-        for (long[] c : noEnteros) {
-            boolean esRaiz = esRaizRacional(r, c[0], c[1]);
-            if (mostrados < MAX_MOSTRAR) {
-                Label l = textoCelda("P(" + fraccion(c) + ") " + (esRaiz ? "=" : "\u2260") + " 0");
-                if (esRaiz) l.setStyle(FUENTE_MONO + "-fx-font-weight: bold;");
-                evaluaciones.getChildren().add(l);
-                mostrados++;
-            }
+        for (int i = 0; i < pruebasRacionales.size() && i < MAX_MOSTRAR; i++) {
+            double[] prueba = pruebasRacionales.get(i);
+            evaluaciones.getChildren().add(celdaPrueba(analisis.aFraccion(prueba[0]), prueba[1] == 1));
         }
         panelResultado.getChildren().add(evaluaciones);
-        if (noEnteros.size() > MAX_MOSTRAR)
+        if (pruebasRacionales.size() > MAX_MOSTRAR)
             panelResultado.getChildren().add(textoMono(
-                    "(se muestran los primeros " + MAX_MOSTRAR + " de " + noEnteros.size() + " candidatos)"));
+                    "(se muestran los primeros " + MAX_MOSTRAR + " de " + pruebasRacionales.size() + " candidatos)"));
 
         // Factorizado: P(x) = (x - p/q) ... C(x), dividiendo por Horner por cada raiz racional
-        if (encontradas.isEmpty()) {
-            panelResultado.getChildren().add(textoMono("P(x) no tiene ra\u00edces racionales."));
+        if (racionales.isEmpty()) {
+            panelResultado.getChildren().add(textoMono("P(x) no tiene raíces racionales."));
+            return;
+        }
+        List<String> encontradas = new ArrayList<>();
+        for (double x : racionales) encontradas.add(analisis.aFraccion(x));
+        panelResultado.getChildren().add(textoMono("Raíces racionales: " + String.join(", ", encontradas)));
+
+        Polinomio actual = p;
+        List<String> factoresRac = new ArrayList<>();
+        for (double x : racionales) {
+            int mult = 0;
+            while (actual.getGrado() > 0 && esRaizDe(actual, x)) {
+                actual = OperacionesPolinomios.dividirHorner(actual, -x).cociente;
+                mult++;
+            }
+            if (mult > 0) {
+                String f = "(x " + (x < 0 ? "+ " : "- ") + analisis.aFraccion(Math.abs(x)) + ")";
+                factoresRac.add(mult == 1 ? f : f + "^{" + mult + "}");
+            }
+        }
+
+        if (factoresRac.isEmpty()) {
+            panelResultado.getChildren().add(textoMono("No se pudo armar la factorización."));
         } else {
-            panelResultado.getChildren().add(textoMono("Ra\u00edces racionales: " + String.join(", ", encontradas)));
-
-            Polinomio actual = p;
-            List<String> factoresRac = new ArrayList<>();
-            for (double x : racionales) {
-                int mult = 0;
-                while (actual.getGrado() > 0) {
-                    double tam = 1;
-                    for (double cf : actual.getCoeficientes()) tam = Math.max(tam, Math.abs(cf));
-                    OperacionesPolinomios.ResultadoDivisionLineal div = OperacionesPolinomios.dividirHorner(actual, -x);
-                    if (Math.abs(div.resto) > 1e-9 * tam) break;   // ya no es raiz
-                    actual = div.cociente;
-                    mult++;
-                }
-                if (mult > 0) {
-                    String f = "(x " + (x < 0 ? "+ " : "- ") + analisis.aFraccion(Math.abs(x)) + ")";
-                    factoresRac.add(mult == 1 ? f : f + "^{" + mult + "}");
-                }
-            }
-
-            if (factoresRac.isEmpty()) {
-                panelResultado.getChildren().add(textoMono("No se pudo armar la factorizaci\u00f3n."));
+            String cociente;
+            if (actual.getGrado() == 0) {
+                double c0 = actual.getCoeficiente(0);
+                if (Math.abs(c0 - 1) < 1e-9) cociente = "";
+                else if (Math.abs(c0 + 1) < 1e-9) cociente = " · (-1)";
+                else cociente = " · (" + texto(actual) + ")";
             } else {
-                String cociente;
-                if (actual.getGrado() == 0) {
-                    double c0 = actual.getCoeficiente(0);
-                    if (Math.abs(c0 - 1) < 1e-9) cociente = "";
-                    else if (Math.abs(c0 + 1) < 1e-9) cociente = " \u00b7 (-1)";
-                    else cociente = " \u00b7 (" + texto(actual) + ")";
-                } else {
-                    cociente = " \u00b7 (" + texto(actual) + ")";
-                }
-                panelResultado.getChildren().add(
-                        formula("P(x) = " + String.join(" ", factoresRac) + cociente, 20));
+                cociente = " · (" + texto(actual) + ")";
             }
+            panelResultado.getChildren().add(
+                    formula("P(x) = " + String.join(" ", factoresRac) + cociente, 20));
         }
     }
 
-    // ---------- Auxiliares de raices enteras / racionales ----------
+    // ---------- Auxiliares de raices enteras / racionales (solo para mostrar) ----------
 
-    /** Division sintetica de Horner por (x - r): devuelve {cociente..., resto}. a en orden descendente. */
-    private static BigInteger[] horner(BigInteger[] a, BigInteger r) {
-        BigInteger[] b = new BigInteger[a.length];
-        b[0] = a[0];
-        for (int i = 1; i < a.length; i++) b[i] = b[i - 1].multiply(r).add(a[i]);
-        return b;
+    /** true si x es raiz de p: el resto de dividir por (x - raiz) con Horner es ~0. */
+    private static boolean esRaizDe(Polinomio p, double raiz) {
+        double tam = 1;
+        for (double cf : p.getCoeficientes()) tam = Math.max(tam, Math.abs(cf));
+        return Math.abs(OperacionesPolinomios.dividirHorner(p, -raiz).resto) <= 1e-9 * tam;
     }
 
-    /** Horner para r = p/q sin dividir: q^n * P(p/q) = 0 <=> p/q es raiz. */
-    private static boolean esRaizRacional(BigInteger[] a, long p, long q) {
-        BigInteger bp = BigInteger.valueOf(p);
-        BigInteger bq = BigInteger.valueOf(q);
-        BigInteger res = a[0];
-        BigInteger potenciaQ = BigInteger.ONE;
-        for (int i = 1; i < a.length; i++) {
-            potenciaQ = potenciaQ.multiply(bq);
-            res = res.multiply(bp).add(a[i].multiply(potenciaQ));
-        }
-        return res.signum() == 0;
+    /** "P(c) = 0" en negrita o "P(c) ≠ 0". */
+    private Label celdaPrueba(String candidato, boolean esRaiz) {
+        Label l = textoCelda("P(" + candidato + ") " + (esRaiz ? "=" : "≠") + " 0");
+        if (esRaiz) l.setStyle(FUENTE_MONO + "-fx-font-weight: bold;");
+        return l;
     }
 
-    /** Menor k >= 1 tal que k * coeficientes son todos enteros. */
-    private static long escalaEntera(double[] c) {
-        for (long k = 1; k <= 1000; k++) {
-            boolean ok = true;
-            for (double v : c) {
-                double x = v * k;
-                if (Math.abs(x) > 1e15 || Math.abs(x - Math.rint(x)) > 1e-9) {
-                    ok = false;
-                    break;
-                }
-            }
-            if (ok) return k;
-        }
-        throw new IllegalArgumentException(
-                "Los coeficientes no son racionales (por ejemplo tienen sen, ln, \u03c0...): "
-                + "no se pueden analizar ra\u00edces enteras ni racionales");
-    }
-
-    /** Divisores positivos de |v|, en orden ascendente. */
-    private static List<Long> divisores(BigInteger v) {
-        BigInteger abs = v.abs();
-        if (abs.bitLength() > 40)
-            throw new IllegalArgumentException("Los coeficientes son demasiado grandes para buscar divisores");
-        long n = abs.longValue();
-        List<Long> chicos = new ArrayList<>();
-        List<Long> grandes = new ArrayList<>();
-        for (long i = 1; i * i <= n; i++) {
-            if (n % i == 0) {
-                chicos.add(i);
-                if (i != n / i) grandes.add(0, n / i);
-            }
-        }
-        chicos.addAll(grandes);
-        return chicos;
-    }
-
-    private static long mcd(long a, long b) {
-        while (b != 0) {
-            long t = a % b;
-            a = b;
-            b = t;
-        }
-        return Math.abs(a);
-    }
-
-    private static String fraccion(long[] c) {
-        return c[1] == 1 ? String.valueOf(c[0]) : c[0] + "/" + c[1];
-    }
-
-    /** {1, -1, 2, -2}: cada divisor positivo seguido de su opuesto. */
-    private static String llaveConSignos(List<Long> divisores) {
+    /** {1, -1, 2, -2}: la lista tal como la devuelve AnalisisPolinomio. */
+    private static String llave(List<Integer> numeros) {
         List<String> t = new ArrayList<>();
-        for (long d : divisores) {
-            t.add(String.valueOf(d));
-            t.add(String.valueOf(-d));
-        }
+        for (int d : numeros) t.add(String.valueOf(d));
         return "{" + String.join(", ", t) + "}";
-    }
-
-    private static String aPolinomio(BigInteger[] a) {
-        double[] d = new double[a.length];
-        for (int i = 0; i < a.length; i++) d[i] = a[i].doubleValue();
-        return texto(new Polinomio(d));
     }
 
     private Label tituloSeccion(String texto) {
@@ -1025,42 +932,61 @@ public class MainFrame extends Application {
         return h;
     }
 
+    // ------------------------------------------------------------------
+    // Newton / Halley (RaicesSolver)
+    // ------------------------------------------------------------------
+
+    /** Resultado final del metodo (RaicesSolver). Lanza excepcion si no converge. */
+    private static RaizResult resolver(Polinomio p, double x0, double eps, int maxIter, boolean halley) {
+        return halley ? RaicesSolver.halleyPolinomio(p, x0, eps, maxIter)
+                      : RaicesSolver.newtonPolinomio(p, x0, eps, maxIter);
+    }
+
+    /**
+     * Un solo paso del metodo: x_{i+1} a partir de x_i, calculado por RaicesSolver.
+     * Con epsilon infinito y maxIter = 1, RaicesSolver corta despues de la primera iteracion.
+     * Lanza excepcion si el metodo no puede seguir (derivada ~ 0, NaN o infinito).
+     */
+    private static double siguienteX(Polinomio p, double xi, boolean halley) {
+        return resolver(p, xi, Double.POSITIVE_INFINITY, 1, halley).getValorRaiz();
+    }
+
     /**
      * Metodos iterativos Newton y Halley. Arma la tabla:
      *   Newton: i | xi | P(xi) | P'(xi) | |xi - x(i-1)|
      *   Halley: i | xi | P(xi) | P'(xi) | P''(xi) | |xi - x(i-1)|
      * (en la primera fila no hay x anterior, por eso se muestra "-").
-     * P(xi) y P'(xi) se calculan juntos con Horner doble.
+     * Cada x(i+1) lo calcula RaicesSolver; aca solo se muestran los valores.
      */
     private void metodoIterativo(Polinomio p, boolean halley) {
         String nombre = halley ? "Halley" : "Newton";
 
         // --- Parametros ---
         if (campoX0.getText().trim().isEmpty())
-            throw new IllegalArgumentException("Falta x0: escrib\u00ed el valor inicial.");
+            throw new IllegalArgumentException("Falta x0: escribí el valor inicial.");
         if (campoEps.getText().trim().isEmpty())
-            throw new IllegalArgumentException("Falta epsilon: escrib\u00ed la tolerancia.");
+            throw new IllegalArgumentException("Falta epsilon: escribí la tolerancia.");
         if (campoIter.getText().trim().isEmpty())
-            throw new IllegalArgumentException("Falta el m\u00e1ximo de iteraciones.");
+            throw new IllegalArgumentException("Falta el máximo de iteraciones.");
         double x0 = parsearNumero(campoX0.getText().trim(), "x0");
         double epsilon;
         int maxIter;
         try {
             epsilon = Double.parseDouble(campoEps.getText().trim().replace(',', '.'));
         } catch (NumberFormatException ex) {
-            throw new IllegalArgumentException("epsilon no es un n\u00famero v\u00e1lido");
+            throw new IllegalArgumentException("epsilon no es un número válido");
         }
         try {
             maxIter = Integer.parseInt(campoIter.getText().trim());
         } catch (NumberFormatException ex) {
-            throw new IllegalArgumentException("El m\u00e1ximo de iteraciones debe ser un entero");
+            throw new IllegalArgumentException("El máximo de iteraciones debe ser un entero");
         }
         if (epsilon <= 0) throw new IllegalArgumentException("epsilon debe ser mayor que 0");
-        if (maxIter < 1) throw new IllegalArgumentException("El m\u00e1ximo de iteraciones debe ser al menos 1");
+        if (maxIter < 1) throw new IllegalArgumentException("El máximo de iteraciones debe ser al menos 1");
         if (esConstante(p))
-            throw new ArithmeticException("P(x) es constante: no hay ra\u00edz que buscar con " + nombre);
+            throw new ArithmeticException("P(x) es constante: no hay raíz que buscar con " + nombre);
 
-        Polinomio segunda = p.derivar().derivar(); // P''(x), solo lo usa Halley
+        Polinomio segunda = p.derivar().derivar(); // P''(x), solo para la columna de Halley
 
         // --- Titulo, P(x) y formula ---
         Label lMetodo = new Label("Algoritmo: " + nombre);
@@ -1069,6 +995,8 @@ public class MainFrame extends Application {
         panelResultado.getChildren().add(lMetodo);
         panelResultado.getChildren().add(textoMono("P(x) = " + texto(p)));
         panelResultado.getChildren().add(halley ? formulaHalley() : formulaNewton());
+        panelResultado.getChildren().add(formula(
+                "Corte: |x_{i} - x_{i-1}| < ε   y   |P(x_{i})| < ε", 18));
 
         // --- Tabla ---
         GridPane t = new GridPane();
@@ -1085,6 +1013,7 @@ public class MainFrame extends Application {
         int fila = 1;
 
         for (int i = 0; i <= maxIter; i++) {
+            // Solo para mostrar las columnas: P(xi) y P'(xi) con Horner doble
             ResultadoHornerDoble r = OperacionesPolinomios.hornerDoble(p, xi);
             double valor = r.getValor();
             double deriv = r.getDerivada();
@@ -1100,49 +1029,36 @@ public class MainFrame extends Application {
                 t.add(celdaNewton(textoCelda(celdas[c]), fila, c), c, fila);
             fila++;
 
-            if (i > 0 && dif < epsilon) {   // corte: |xi - x(i-1)| < epsilon
-                convergio = true;
-                break;
-            }
-            if (valor == 0) {               // xi ya es raiz exacta
+            if (i > 0 && dif < epsilon && Math.abs(valor) < epsilon) {   // mismo corte que RaicesSolver
                 convergio = true;
                 break;
             }
             if (i == maxIter) break;
 
-            double siguiente;
-            if (halley) {
-                double den = 2 * deriv * deriv - valor * deriv2;
-                if (Math.abs(den) < 1e-14) {
-                    motivoCorte = "El denominador de Halley \u2248 0 en x = " + formatoNewton(xi)
-                            + ": el m\u00e9todo no puede continuar. Prob\u00e1 con otro x0.";
-                    break;
-                }
-                siguiente = xi - 2 * valor * deriv / den;
-            } else {
-                if (Math.abs(deriv) < 1e-14) {
-                    motivoCorte = "P'(x) \u2248 0 en x = " + formatoNewton(xi)
-                            + ": el m\u00e9todo no puede continuar. Prob\u00e1 con otro x0.";
-                    break;
-                }
-                siguiente = xi - valor / deriv;
+            try {
+                double siguiente = siguienteX(p, xi, halley);   // la formula la aplica RaicesSolver
+                xAnterior = xi;
+                xi = siguiente;
+            } catch (RuntimeException ex) {
+                motivoCorte = ex.getMessage() + " (en x = " + formatoNewton(xi) + "). Probá con otro x0.";
+                break;
             }
-            xAnterior = xi;
-            xi = siguiente;
         }
 
         panelResultado.getChildren().add(t);
 
-        // --- Conclusion ---
+        // --- Conclusion: el resultado final lo da RaicesSolver ---
         if (convergio) {
+            RaizResult rr = resolver(p, x0, epsilon, maxIter, halley);
             panelResultado.getChildren().add(textoMono(
-                    "Ra\u00edz aproximada: x \u2248 " + formatoNewton(xi)
-                    + "   (" + (fila - 2) + " iteraciones)"));
+                    "Raíz aproximada: x ≈ " + formatoNewton(rr.getValorRaiz())
+                    + "   (" + rr.getIteraciones() + " iteraciones, error "
+                    + formatoNewton(rr.getErrorAlcanzado()) + ")"));
         } else if (motivoCorte != null) {
             panelResultado.getChildren().add(textoMono(motivoCorte));
         } else {
             panelResultado.getChildren().add(textoMono(
-                    "No convergi\u00f3 en " + maxIter + " iteraciones. Prob\u00e1 con otro x0 o m\u00e1s iteraciones."));
+                    "No convergió en " + maxIter + " iteraciones. Probá con otro x0 o más iteraciones."));
         }
     }
 
@@ -1260,12 +1176,12 @@ public class MainFrame extends Application {
 
     private double leerEpsilon() {
         String t = campoEps.getText().trim();
-        if (t.isEmpty()) throw new IllegalArgumentException("Falta epsilon: escrib\u00ed la tolerancia.");
+        if (t.isEmpty()) throw new IllegalArgumentException("Falta epsilon: escribí la tolerancia.");
         double eps;
         try {
             eps = Double.parseDouble(t.replace(',', '.'));
         } catch (NumberFormatException ex) {
-            throw new IllegalArgumentException("epsilon no es un n\u00famero v\u00e1lido");
+            throw new IllegalArgumentException("epsilon no es un número válido");
         }
         if (eps <= 0) throw new IllegalArgumentException("epsilon debe ser mayor que 0");
         return eps;
@@ -1273,14 +1189,14 @@ public class MainFrame extends Application {
 
     private int leerMaxIter() {
         String t = campoIter.getText().trim();
-        if (t.isEmpty()) throw new IllegalArgumentException("Falta el m\u00e1ximo de iteraciones.");
+        if (t.isEmpty()) throw new IllegalArgumentException("Falta el máximo de iteraciones.");
         int it;
         try {
             it = Integer.parseInt(t);
         } catch (NumberFormatException ex) {
-            throw new IllegalArgumentException("El m\u00e1ximo de iteraciones debe ser un entero");
+            throw new IllegalArgumentException("El máximo de iteraciones debe ser un entero");
         }
-        if (it < 1) throw new IllegalArgumentException("El m\u00e1ximo de iteraciones debe ser al menos 1");
+        if (it < 1) throw new IllegalArgumentException("El máximo de iteraciones debe ser al menos 1");
         return it;
     }
 
@@ -1291,9 +1207,8 @@ public class MainFrame extends Application {
 
     /**
      * Bairstow con tabla de iteraciones.
-     * La clase BairstowSolver solo devuelve las raices, asi que la tabla se arma repitiendo aca
-     * el mismo algoritmo (mismos coeficientes c, mismo determinante, mismas formulas de dr y ds,
-     * mismos criterios de corte). Despues se llama a BairstowSolver.bairstow() de verdad para comparar.
+     * El calculo lo hace BairstowSolver.bairstow(); la tabla se arma con los datos que guarda
+     * (BairstowSolver.getTabla() y getPolinomios()). Aca no se repite el algoritmo.
      *
      * Columnas: k | r | s | dr | ds | |dr/r| | |ds/s|
      * Cada fila k muestra el r y s con los que se calcula ese paso y los dr, ds resultantes
@@ -1301,15 +1216,26 @@ public class MainFrame extends Application {
      */
     private void metodoBairstow(Polinomio p) {
         if (campoR0.getText().trim().isEmpty())
-            throw new IllegalArgumentException("Falta r0: escrib\u00ed el valor inicial de r.");
+            throw new IllegalArgumentException("Falta r0: escribí el valor inicial de r.");
         if (campoS0.getText().trim().isEmpty())
-            throw new IllegalArgumentException("Falta s0: escrib\u00ed el valor inicial de s.");
+            throw new IllegalArgumentException("Falta s0: escribí el valor inicial de s.");
         final double r0 = parsearNumero(campoR0.getText().trim(), "r0");
         final double s0 = parsearNumero(campoS0.getText().trim(), "s0");
         final double epsilon = leerEpsilon();
         final int maxIter = leerMaxIter();
         if (esConstante(p))
-            throw new ArithmeticException("P(x) es constante: no hay ra\u00edces que buscar con Bairstow");
+            throw new ArithmeticException("P(x) es constante: no hay raíces que buscar con Bairstow");
+
+        // ---- Calculo: lo hace BairstowSolver (si no converge, la tabla igual queda guardada) ----
+        List<RaizCompleja> raices = null;
+        String error = null;
+        try {
+            raices = BairstowSolver.bairstow(p, r0, s0, epsilon, maxIter);
+        } catch (ArithmeticException ex) {
+            error = ex.getMessage();
+        }
+        List<double[]> tabla = BairstowSolver.getTabla();          // {factor, k, r, s, dr, ds, errR, errS, detCero}
+        List<double[]> polinomios = BairstowSolver.getPolinomios(); // P1, P2, ... (y el resto si convergio)
 
         Label lMetodo = new Label("Algoritmo: Bairstow");
         lMetodo.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: "
@@ -1317,129 +1243,70 @@ public class MainFrame extends Application {
         panelResultado.getChildren().add(lMetodo);
         panelResultado.getChildren().add(textoMono("P(x) = " + texto(p)));
         panelResultado.getChildren().add(textoMono(
-                "Factor cuadr\u00e1tico: x^2 - r x - s     r = r + \u0394r     s = s + \u0394s     "
+                "Factor cuadrático: x^2 - r x - s     r = r + Δr     s = s + Δs     "
                 + "(los factores siguientes siguen desde el r y s del anterior)"));
 
-        // ---- 1) Tabla: mismo algoritmo que BairstowSolver.bairstow ----
-        double[] coef = p.getCoeficientes();
-        int n = coef.length - 1;
-        double r = r0;
-        double s = s0;
-        int iter = 0;
-        List<RaizCompleja> raices = new ArrayList<>();
-        boolean cortado = false;
-        int numero = 1;
+        // Si convergio, el ultimo polinomio guardado es el resto (no es un factor)
+        int cantidadFactores = (error == null) ? polinomios.size() - 1 : polinomios.size();
+        int filaTabla = 0;   // posicion en la tabla de BairstowSolver
 
-        while (n > 2 && iter <= maxIter && !cortado) {
-            iter = 0;
+        for (int f = 1; f <= cantidadFactores; f++) {
             panelResultado.getChildren().add(new Separator());
             panelResultado.getChildren().add(negrita(
-                    "Factor " + numero + ":  P" + numero + "(x) = " + texto(new Polinomio(coef))));
+                    "Factor " + f + ":  P" + f + "(x) = " + texto(new Polinomio(polinomios.get(f - 1)))));
 
             GridPane t = new GridPane();
-            String[] encabezados = {"k", "r", "s", "\u0394r", "\u0394s", "|\u0394r/r|", "|\u0394s/s|"};
+            String[] encabezados = {"k", "r", "s", "Δr", "Δs", "|Δr/r|", "|Δs/s|"};
             for (int c = 0; c < encabezados.length; c++)
                 t.add(celdaNewton(formula(encabezados[c], 18), 0, c), c, 0);
             int fila = 1;
 
             List<String> notas = new ArrayList<>();
-            double errorR, errorS;
-            int pasos = 0;
-            final int TOPE_PASOS = 10 * maxIter + 100; // corte de seguridad de la app
-            do {
-                iter++;
-                pasos++;
-                final double rAntes = r;   // r de esta fila (antes de actualizar)
-                final double sAntes = s;   // s de esta fila (antes de actualizar)
+            double rFinal = Double.NaN, sFinal = Double.NaN;
+            int kFinal = 0;
+            // filas de este factor
+            while (filaTabla < tabla.size() && (int) tabla.get(filaTabla)[0] == f) {
+                double[] d = tabla.get(filaTabla++);
+                int k = (int) d[1];
+                fila = filaBairstow(t, fila, k, d[2], d[3], d[4], d[5], d[6], d[7]);
+                if (d[8] == 1)
+                    notas.add("En la iteración " + (k + 1) + " el determinante fue ≈ 0: "
+                            + "se suma 1 a r y a s y se reinicia el contador k.");
+                rFinal = d[2] + d[4];   // r + dr
+                sFinal = d[3] + d[5];   // s + ds
+                kFinal = k + 1;
+            }
 
-                double[] b = bairstowB(coef, r, s);
-                double[] c = bairstowB(b, r, s);
-                // residuos de b[] (orden descendente: los ultimos elementos)
-                // b0 = resto verdadero de la division: b[n] - r*b[n-1]  (= P[n] + s*b[n-2])
-                double b0 = b[b.length - 1];
-                double b1 = b[b.length - 2];
-                // coeficientes de c[]
-                double c1 = c[c.length - 2];
-                double c2 = c[c.length - 3];
-                double c3 = c[c.length - 4];
-                double det = (c2 * c2) - (c1 * c3);
-
-                double dr, ds;
-                int kFila = iter;
-                if (Double.isFinite(det) && Math.abs(det) > 1e-12) {
-                    dr = (b0 * c3 - b1 * c2) / det;
-                    ds = (b1 * c1 - b0 * c2) / det;
-                    r += dr;
-                    s += ds;
-                    errorR = Math.abs(dr / (r != 0 ? r : 1.0));
-                    errorS = Math.abs(ds / (s != 0 ? s : 1.0));
-                } else {
-                    dr = 1.0;
-                    ds = 1.0;
-                    r += 1.0;
-                    s += 1.0;
-                    notas.add("En la iteraci\u00f3n " + kFila + " el determinante fue \u2248 0: se suma 1 a r y a s y se reinicia el contador k.");
-                    iter = 0;
-                    errorR = 1.0;
-                    errorS = 1.0;
-                }
-                fila = filaBairstow(t, fila, kFila - 1, rAntes, sAntes, dr, ds, errorR, errorS);
-
-                if (Double.isNaN(r) || Double.isNaN(s) || Double.isInfinite(r) || Double.isInfinite(s)) {
-                    notas.add("r o s se volvi\u00f3 NaN/infinito: la app corta ac\u00e1.");
-                    cortado = true;
-                    break;
-                }
-                if (pasos >= TOPE_PASOS) {
-                    notas.add("Corte de seguridad de la app tras " + pasos + " pasos.");
-                    cortado = true;
-                    break;
-                }
-                if ((errorR <= epsilon && errorS <= epsilon) || iter > maxIter) {
-                    break;
-                }
-            } while (true);
-            // fila final: k = ultima iteracion + 1, solo r y s (en negrita), sin Delta
-            if (!cortado) filaBairstowFinal(t, fila, iter, r, s);
+            boolean fallo = (error != null && f == cantidadFactores);   // este factor no convergio
+            if (!fallo) filaBairstowFinal(t, fila, kFinal, rFinal, sFinal);   // fila final en negrita
             panelResultado.getChildren().add(t);
             for (String nota : notas) panelResultado.getChildren().add(textoMono(nota));
-            if (cortado) break;
 
-            boolean convergio = false;
-            // convergio si salio por tolerancia (no por pasarse de iteraciones)
-            if (iter <= maxIter) convergio = true;
-            panelResultado.getChildren().add(formula("Q(x) = " + factorCuadratico(r, s), 20));
-            if (!convergio)
-                panelResultado.getChildren().add(negrita(
-                        "No convergi\u00f3 en " + maxIter + " iteraciones (igual se usan estos r y s y se sigue)."));
+            if (fallo) {
+                panelResultado.getChildren().add(negrita(error
+                        + ": el método se detiene acá. Probá con otros r0, s0 o más iteraciones."));
+                return;
+            }
 
-            List<RaizCompleja> parciales = BairstowSolver.formulaCuad(r, s);
-            raices.addAll(parciales);
-            panelResultado.getChildren().add(textoMono("Ra\u00edces del factor: " + unirRaices(parciales)));
-
-            n = n - 2;
-            double[] b = bairstowB(coef, r, s);
-            double[] cociente = new double[coef.length - 2];
-            for (int i = 0; i < cociente.length; i++) cociente[i] = b[i];
-            coef = cociente;
-            panelResultado.getChildren().add(textoMono("Cociente: " + texto(new Polinomio(coef))));
-            numero++;
+            panelResultado.getChildren().add(formula("Q(x) = " + factorCuadratico(rFinal, sFinal), 20));
+            // Raices del factor: la misma formula que usa BairstowSolver (sirve aunque un factor posterior falle)
+            panelResultado.getChildren().add(textoMono(
+                    "Raíces del factor: " + unirRaices(BairstowSolver.formulaCuad(rFinal, sFinal))));
+            panelResultado.getChildren().add(textoMono(
+                    "Cociente: " + texto(new Polinomio(polinomios.get(f)))));
         }
 
-        if (!cortado && iter <= maxIter) {
-            if (n == 2) {
-                List<RaizCompleja> fin = BairstowSolver.formulaCuad(-coef[1] / coef[0], -coef[2] / coef[0]);
-                raices.addAll(fin);
-                panelResultado.getChildren().add(textoMono(
-                        "Queda " + texto(new Polinomio(coef)) + " (grado 2): f\u00f3rmula cuadr\u00e1tica."));
-                panelResultado.getChildren().add(textoMono("Ra\u00edces del factor: " + unirRaices(fin)));
-            } else if (n == 1) {
-                RaizCompleja lineal = new RaizCompleja(-coef[1] / coef[0], 0.0);
-                raices.add(lineal);
-                panelResultado.getChildren().add(textoMono(
-                        "Queda " + texto(new Polinomio(coef)) + " (grado 1)."));
-                panelResultado.getChildren().add(textoMono("Ra\u00edz: " + lineal));
-            }
+        // Lo que queda al final (grado 2 o 1): sus raices son las ultimas de la lista
+        double[] resto = polinomios.get(polinomios.size() - 1);
+        List<RaizCompleja> raicesResto = raices.subList(2 * cantidadFactores, raices.size());
+        if (resto.length == 3) {
+            panelResultado.getChildren().add(textoMono(
+                    "Queda " + texto(new Polinomio(resto)) + " (grado 2): fórmula cuadrática."));
+            panelResultado.getChildren().add(textoMono("Raíces del factor: " + unirRaices(raicesResto)));
+        } else if (resto.length == 2) {
+            panelResultado.getChildren().add(textoMono(
+                    "Queda " + texto(new Polinomio(resto)) + " (grado 1)."));
+            panelResultado.getChildren().add(textoMono("Raíz: " + unirRaices(raicesResto)));
         }
     }
 
@@ -1470,16 +1337,6 @@ public class MainFrame extends Application {
         return "x^{2} " + tr + " " + ts;
     }
 
-    /** Copia de calcularB de BairstowSolver: b[i] = coef[i] + r b[i-1] + s b[i-2]. */
-    private static double[] bairstowB(double[] coef, double r, double s) {
-        int n = coef.length - 1;
-        double[] b = new double[n + 1];
-        b[0] = coef[0];
-        if (n >= 1) b[1] = coef[1] + r * b[0];
-        for (int i = 2; i <= n; i++) b[i] = coef[i] + r * b[i - 1] + s * b[i - 2];
-        return b;
-    }
-
     private static String unirRaices(List<RaizCompleja> raices) {
         List<String> t = new ArrayList<>();
         for (RaizCompleja z : raices) t.add(z.toString());
@@ -1496,88 +1353,405 @@ public class MainFrame extends Application {
      */
         private void metodoCotas(Polinomio p) {
         if (esConstante(p))
-            throw new ArithmeticException("P(x) es constante: no tiene ra\u00edces que acotar");
+            throw new ArithmeticException("P(x) es constante: no tiene raíces que acotar");
         String nombre = metodoCota.getValue();
         if (nombre == null)
-            throw new IllegalArgumentException("Falta elegir el m\u00e9todo de cota (Lagrange, Laguerre o Newton).");
-        int num = metodoCota.getItems().indexOf(nombre) + 1; // 1 = Lagrange, 2 = Laguerre, 3 = Newton
+            throw new IllegalArgumentException("Falta elegir el método de cota (Lagrange, Laguerre o Newton).");
+        int num = numeroMetodoCota(nombre);
 
         CotasDePolinomio cotas = new CotasDePolinomio();
 
-        Label lMetodo = new Label("Cotas de las ra\u00edces \u2013 m\u00e9todo: " + nombre);
+        Label lMetodo = new Label("Cotas de las raíces – método: " + nombre);
         lMetodo.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: "
                 + COLOR_ENCABEZADO + ";");
         panelResultado.getChildren().add(lMetodo);
         panelResultado.getChildren().add(textoMono("P(x) = " + texto(p)));
         if (p.getCoeficiente(p.getGrado()) == 0)
             panelResultado.getChildren().add(textoMono(
-                    "El t\u00e9rmino independiente es 0: x = 0 es ra\u00edz. Las cotas son para las dem\u00e1s ra\u00edces."));
+                    "El término independiente es 0: x = 0 es raíz. Las cotas son para las demás raíces."));
 
         // 1) Cota superior de las raices positivas: se aplica directo a P(x)
         double supPos = cotas.cotaSuperiorPositiva(p, num);
-        mostrarCota("1) Cota superior de las ra\u00edces positivas", "Se usa P(x)",
-                supPos == 0 ? "No hay ra\u00edces positivas."
+        mostrarCota("1) Cota superior de las raíces positivas",
+                supPos == 0 ? "No hay raíces positivas."
                             : "Cota superior positiva = " + formato(supPos));
 
         // 2) Cota inferior de las raices positivas: x = 1/t
-        Polinomio q1 = cambioInfPositiva(p);
         double infPos = cotas.cotaInferiorPositiva(p, num);
-        mostrarCota("2) Cota inferior de las ra\u00edces positivas",
-                "Cambio x = 1/t:  x^n \u00b7 P(1/x) = " + texto(q1),
-                infPos == 0 ? "No hay ra\u00edces positivas."
+        mostrarCota("2) Cota inferior de las raíces positivas",
+                infPos == 0 ? "No hay raíces positivas."
                             : "Cota inferior positiva = 1 / " + formato(1 / infPos) + " = " + formato(infPos));
 
         // 3) Cota inferior de las raices negativas: x = -t
-        Polinomio q2 = cambioInfNegativa(p);
         double infNeg = cotas.cotaInferiorNegativa(p, num);
-        mostrarCota("3) Cota inferior de las ra\u00edces negativas",
-                "Cambio x = -t:  P(-x) = " + texto(q2),
-                infNeg == 0 ? "No hay ra\u00edces negativas."
+        mostrarCota("3) Cota inferior de las raíces negativas",
+                infNeg == 0 ? "No hay raíces negativas."
                             : "Cota inferior negativa = -" + formato(-infNeg) + " = " + formato(infNeg));
 
         // 4) Cota superior de las raices negativas: x = -1/t
-        Polinomio q3 = cambioSupNegativa(p);
         double supNeg = cotas.cotaSuperiorNegativa(p, num);
-        mostrarCota("4) Cota superior de las ra\u00edces negativas",
-                "Cambio x = -1/t:  x^n \u00b7 P(-1/x) = " + texto(q3),
-                supNeg == 0 ? "No hay ra\u00edces negativas."
+        mostrarCota("4) Cota superior de las raíces negativas",
+                supNeg == 0 ? "No hay raíces negativas."
                             : "Cota superior negativa = -1 / " + formato(-1 / supNeg) + " = " + formato(supNeg));
 
-        // Intervalos finales (los arma CotasDePolinomio)
         panelResultado.getChildren().add(new Separator());
         panelResultado.getChildren().add(tituloSeccion("Intervalos"));
-        for (String linea : cotas.intervalos(p, num).split("\n"))
-            panelResultado.getChildren().add(negrita(linea));
+        panelResultado.getChildren().add(negrita(supPos == 0 ? "No hay ra\u00edces positivas"
+                : "Ra\u00edces positivas en [" + redondear4(infPos) + ", " + redondear4(supPos) + "]"));
+        panelResultado.getChildren().add(negrita(infNeg == 0 ? "No hay ra\u00edces negativas"
+                : "Ra\u00edces negativas en [" + redondear4(infNeg) + ", " + redondear4(supNeg) + "]"));
     }
 
-    /** Bloque de una cota: titulo, polinomio usado y resultado. */
-    private void mostrarCota(String titulo, String polinomio, String resultado) {
+   
+    private static double redondear4(double x) {
+        return Math.round(x * 10000) / 10000.0;
+    }
+
+    // ==================== INICIO: Sturm =====================
+
+    /** intervalos con raiz del ultimo calculo de Sturm (para el grafico): {a, b} */
+    private List<double[]> sturmIntervalos = new ArrayList<>();
+    /** raices exactas encontradas en los puntos del ultimo calculo de Sturm (en rojo en el grafico) */
+    private List<Double> sturmRaicesExactas = new ArrayList<>();
+    /** texto de las cotas del ultimo calculo de Sturm (para el grafico) */
+    private String sturmTextoCotas = "";
+    /** cotas usadas en el ultimo calculo de Sturm (para el grafico) */
+    private List<Double> sturmCotas = new ArrayList<>();
+
+    /**
+     * Sucesion de Sturm (SturmSolver) y tabla de signos.
+     * Primero se calculan las cotas (CotasDePolinomio, con el metodo elegido); los puntos alfa son
+     * las cotas y los enteros que hay entre ellas, mas los que se escriban en "Puntos" (para refinar).
+     */
+    private void metodoSturm(Polinomio p) {
+        if (esConstante(p))
+            throw new ArithmeticException("P(x) es constante: no tiene raíces");
+
+        SturmSolver st = new SturmSolver();
+        ArrayList<Polinomio> suc = st.generarSucesion(p);            // la que se usa para contar
+        ArrayList<Polinomio> original = st.getSucesionOriginal();
+        Polinomio mcd = st.getMcd();
+
+        Label lMetodo = new Label("Sucesión de Sturm");
+        lMetodo.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: " + COLOR_ENCABEZADO + ";");
+        panelResultado.getChildren().add(lMetodo);
+        panelResultado.getChildren().add(textoMono("P(x) = " + texto(p)));
+
+        // ---- 1) Sucesion ----
+        for (int i = 0; i < original.size(); i++)
+            panelResultado.getChildren().add(formula("f_{" + i + "}(x) = " + texto(original.get(i)), 20));
+        if (mcd != null) {
+            panelResultado.getChildren().add(formula("f_{" + original.size() + "}(x) = 0", 20));
+            panelResultado.getChildren().add(negrita("La sucesión termina en 0: P(x) tiene raíces múltiples. "
+                    + "Se divide P(x) por f_" + (original.size() - 1) + "(x) = " + texto(mcd) + " y se arma de nuevo:"));
+            for (int i = 0; i < suc.size(); i++)
+                panelResultado.getChildren().add(formula("f_{" + i + "}(x) = " + texto(suc.get(i)), 20));
+        }
+
+        // ---- 2) Puntos alfa ----
+        List<Double> puntos = new ArrayList<>();
+        sturmCotas = new ArrayList<>();
+        // primero SIEMPRE las cotas: los puntos de la tabla salen de ahi
+        String nombre = metodoCota.getValue();
+         int num = numeroMetodoCota(nombre); ;   // 1 = Lagrange, 2 = Laguerre, 3 = Newton
+        CotasDePolinomio cotas = new CotasDePolinomio();
+        double supPos = cotas.cotaSuperiorPositiva(p, num);
+        double infPos = cotas.cotaInferiorPositiva(p, num);
+        double infNeg = cotas.cotaInferiorNegativa(p, num);
+        double supNeg = cotas.cotaSuperiorNegativa(p, num);
+        String txtPos = supPos == 0 ? "sin raíces positivas"
+                : fraccionTexto(infPos) + " < raíces positivas < " + fraccionTexto(supPos);
+        String txtNeg = infNeg == 0 ? "sin raíces negativas"
+                : fraccionTexto(infNeg) + " < raíces negativas < " + fraccionTexto(supNeg);
+        panelResultado.getChildren().add(textoMono("Cotas (" + nombre + "):  " + txtPos + "     " + txtNeg));
+        sturmTextoCotas = txtNeg + "     " + txtPos;   // para el texto del grafico
+        if (infNeg != 0) { sturmCotas.add(infNeg); sturmCotas.add(supNeg); }
+        if (supPos != 0) { sturmCotas.add(infPos); sturmCotas.add(supPos); }
+
+        // dos intervalos: negativas [infNeg, supNeg] y positivas [infPos, supPos]
+        sturmIntervalos = new ArrayList<>();
+        List<double[]> tramos = tramosCotas(infNeg, supNeg, infPos, supPos);
+        if (tramos.isEmpty()) {
+            panelResultado.getChildren().add(negrita("Seg\u00fan las cotas no hay ra\u00edces reales (salvo quiz\u00e1 x = 0)."));
+            if (Math.abs(p.evaluar(0)) < 1e-12)
+                panelResultado.getChildren().add(textoMono("P(0) = 0: x = 0 es ra\u00edz."));
+            campoPuntos.setDisable(true);
+            etiquetaIntervalo.setText("Sin ra\u00edces reales seg\u00fan las cotas");   
+            return;
+        }
+        etiquetaIntervalo.setText(textoTramos(infNeg, supNeg, infPos, supPos));   
+        campoPuntos.setDisable(false);   // ya hay cotas: se pueden cambiar los puntos
+
+        //campo vacio: se escriben ahi los puntos por defecto (de 0.5 en 0.5 dentro de cada intervalo)
+        if (campoPuntos.getText().trim().isEmpty()) {
+            campoPuntos.setText(textoPuntosPorDefecto(tramos));
+            panelResultado.getChildren().add(textoMono("Puntos por defecto: de 0.5 en 0.5 dentro de cada intervalo"
+                    + " (quedan escritos en \"Puntos \u03b1\": pod\u00e9s borrar o agregar y apretar Enter)."));
+        }
+
+        // se usan los puntos del campo, solo los validos (dentro de alguno de los intervalos)
+        List<String> descartados = new ArrayList<>();
+        for (String parte : campoPuntos.getText().trim().split("[,;\\s]+")) {
+            if (parte.isEmpty()) continue;
+            double a;
+            try {
+                a = Parser.parse(parte).valorConstante();
+            } catch (RuntimeException ex) {
+                descartados.add(parte + " (no es un n\u00famero)");
+                continue;
+            }
+            double[] tramo = tramoDe(a, tramos);
+            if (tramo == null) {
+                descartados.add(parte + " (fuera de las cotas)");
+                continue;
+            }
+            puntos.add(Math.max(tramo[0], Math.min(tramo[1], a)));   // los extremos se escriben redondeados
+        }
+        if (!descartados.isEmpty())
+            panelResultado.getChildren().add(negrita("Descartados: " + String.join(", ", descartados)));
+
+        // ordenar y sacar repetidos ( los puntos que son raiz SE QUEDAN en la tabla, marcados)
+        puntos.sort(Double::compare);
+        List<Double> usados = new ArrayList<>();
+        for (double a : puntos) {
+            if (!usados.isEmpty() && Math.abs(usados.get(usados.size() - 1) - a) < 1e-12) continue;
+            usados.add(a);
+        }
+        if (usados.size() < 2) {   //  hacen falta 2 puntos para armar un intervalo
+            panelResultado.getChildren().add(negrita("Hacen falta al menos 2 puntos válidos dentro de las cotas ("
+                    + textoTramos(infNeg, supNeg, infPos, supPos) + "). Borrá el campo y apretá Enter para usar los puntos por defecto."));
+            return;
+        }
+        boolean[] esRaiz = new boolean[usados.size()];   
+        sturmRaicesExactas = new ArrayList<>();
+        for (int j = 0; j < usados.size(); j++) {
+            esRaiz[j] = Math.abs(p.evaluar(usados.get(j))) < 1e-9;
+            if (esRaiz[j]) sturmRaicesExactas.add(usados.get(j));
+        }
+        boolean ceroEsRaiz = Math.abs(p.evaluar(0)) < 1e-12;
+        if (ceroEsRaiz && !sturmRaicesExactas.contains(0.0)) sturmRaicesExactas.add(0.0);
+        sturmRaicesExactas.sort(Double::compare);   
+
+        // ---- 3) Tabla de signos y N(alfa) ----
+        int[] n = new int[usados.size()];
+        for (int j = 0; j < usados.size(); j++) n[j] = st.calcularCambiosDeSigno(suc, usados.get(j));
+
+        final String ROJO_RAIZ = "-fx-text-fill: #d62728; -fx-font-weight: bold;";   
+        GridPane t = new GridPane();
+        t.add(celdaNewton(textoCelda(""), 0, 0), 0, 0);
+        for (int j = 0; j < usados.size(); j++) {
+            t.add(celdaNewton(textoCelda(fraccionTexto(usados.get(j))), 0, j + 1), j + 1, 0);
+        }
+        for (int i = 0; i < suc.size(); i++) {
+            t.add(celdaNewton(formula("f_{" + i + "}(x)", 18), i + 1, 0), 0, i + 1);
+            for (int j = 0; j < usados.size(); j++) {
+                double v = suc.get(i).evaluar(usados.get(j));
+                String signo = Math.abs(v) < 1e-12 || (i == 0 && esRaiz[j]) ? "0" : (v > 0 ? "+" : "−");
+                Label celdaSigno = textoCelda(signo);
+                if (i == 0 && esRaiz[j]) celdaSigno.setStyle(FUENTE_MONO + ROJO_RAIZ);   //f0 = 0 en rojo
+                t.add(celdaNewton(celdaSigno, i + 1, j + 1), j + 1, i + 1);
+            }
+        }
+        int filaN = suc.size() + 1;
+        t.add(celdaNewton(formula("N(α)", 18), filaN, 0), 0, filaN);
+        for (int j = 0; j < usados.size(); j++) {
+            Label l = textoCelda(String.valueOf(n[j]));
+            l.setStyle(FUENTE_MONO + "-fx-font-weight: bold;");
+            t.add(celdaNewton(l, filaN, j + 1), j + 1, filaN);
+        }
+        panelResultado.getChildren().add(t);
+
+        // ---- 4) Raices exactas y raices en intervalos ----
+        //  una raiz exacta en el punto b se cuenta en (a, b]; como ya se conoce, se descuenta del intervalo
+        for (int j = 0; j < usados.size(); j++)
+            if (esRaiz[j]) {
+                panelResultado.getChildren().add(negrita("✔ x = " + fraccionTexto(usados.get(j)) + " es raíz exacta (P("
+                        + fraccionTexto(usados.get(j)) + ") = 0)."));
+            }
+        if (ceroEsRaiz) {
+            panelResultado.getChildren().add(negrita("✔ x = 0 es raíz exacta (P(0) = 0)."));
+        }
+        sturmIntervalos = new ArrayList<>();
+        List<String> sugeridos = new ArrayList<>();   
+        List<String> textoIntervalos = new ArrayList<>();
+        int enIntervalos = 0;
+        for (int j = 0; j + 1 < usados.size(); j++) {
+            double ia = usados.get(j), ib = usados.get(j + 1);
+            int d = Math.abs(n[j] - n[j + 1]);
+            if (esRaiz[j + 1]) d--;                                   // la raiz exacta b ya se conoce
+            if (ceroEsRaiz && ia < 0 && ib > 0) d--;                  // el 0 ya se conoce
+            if (d <= 0) continue;
+            enIntervalos += d;
+            sturmIntervalos.add(new double[]{ia, ib});
+            textoIntervalos.add("(" + fraccionTexto(ia) + ", " + fraccionTexto(ib) + ")");
+            String txt = "|N(" + fraccionTexto(ia) + ") - N(" + fraccionTexto(ib) + ")| = " + Math.abs(n[j] - n[j + 1])
+                    + "   → hay " + d + (d == 1 ? " raíz" : " raíces") + " entre " + fraccionTexto(ia) + " y " + fraccionTexto(ib)
+                    + (esRaiz[j + 1] ? " (además de la raíz exacta " + fraccionTexto(ib) + ")" : "");
+            if (d > 1) {   
+                List<String> sug = new ArrayList<>();
+                double medio = SturmSolver.puntoMedio(p, ia, ib);
+                if (tramoDe(medio, tramos) != null) {
+                    sug.add(fraccionTexto(medio));
+                } else {   // el medio cae entre las cotas (no valido): se sugieren los extremos de las cotas
+                    for (double[] tr : tramos)
+                        for (double e : tr)
+                            if (e > ia + 1e-9 && e < ib - 1e-9 && Math.abs(p.evaluar(e)) > 1e-9) sug.add(fraccionTexto(e));
+                }
+                sugeridos.addAll(sug);
+                txt += sug.isEmpty() ? ": agregá más puntos para separarlas"
+                        : ": agregá " + String.join(", ", sug) + " para separarlas";
+            }
+            panelResultado.getChildren().add(negrita(txt));
+        }
+        if (!sugeridos.isEmpty())   
+            panelResultado.getChildren().add(negrita("Sugerencia: agregá " + String.join(", ", sugeridos)
+                    + " en \"Puntos α\" y apretá Enter."));
+
+        // resumen por cota: cuantas raices hay en el intervalo de las negativas y en el de las positivas
+        panelResultado.getChildren().add(new Separator());
+        panelResultado.getChildren().add(negrita("Raíces por cota"));
+        for (double[] tr : tramos) {
+            int na = st.calcularCambiosDeSigno(suc, tr[0]);
+            int nb = st.calcularCambiosDeSigno(suc, tr[1]);
+            String tipo = tr[1] <= 0 ? "negativas" : "positivas";
+            panelResultado.getChildren().add(textoMono("Raíces " + tipo + " en [" + fraccionTexto(tr[0]) + ", " + fraccionTexto(tr[1])
+                    + "]:  |N(" + fraccionTexto(tr[0]) + ") - N(" + fraccionTexto(tr[1]) + ")| = |" + na + " - " + nb + "| = " + Math.abs(na - nb)));
+        }
+        if (infNeg == 0) panelResultado.getChildren().add(textoMono("Raíces negativas: no hay (según las cotas)"));
+        if (supPos == 0) panelResultado.getChildren().add(textoMono("Raíces positivas: no hay (según las cotas)"));
+
+        // resumen final: las que ya estan y las que falta buscar
+        List<String> exactas = new ArrayList<>();
+        for (double r : sturmRaicesExactas) exactas.add(fraccionTexto(r));
+        panelResultado.getChildren().add(textoMono("Raíces exactas: " + (exactas.isEmpty() ? "ninguna" : String.join(", ", exactas))));
+        panelResultado.getChildren().add(textoMono("Raíces en intervalos (para buscar con Newton): "
+                + (textoIntervalos.isEmpty() ? "ninguna" : String.join(", ", textoIntervalos))));
+        panelResultado.getChildren().add(negrita("Total de raíces reales distintas: " + (exactas.size() + enIntervalos)
+                + (mcd != null ? "   (P(x) tiene raíces múltiples: se cuentan una sola vez)" : "")));
+    }
+
+    
+    private static void agregarRango(List<Double> puntos, double desde, double hasta) {
+        double paso = pasoRango(desde, hasta);
+        puntos.add(desde);
+        for (double k = (Math.floor(desde / paso) + 1) * paso; k < hasta - 1e-9; k += paso)
+            if (k > desde + 1e-9) puntos.add(Math.round(k / paso) * paso);   // sin ruido de decimales
+        puntos.add(hasta);
+    }
+
+    /** paso de los puntos por defecto: 0.5, o uno mayor si quedarian demasiados. */
+    private static double pasoRango(double desde, double hasta) {
+        final int MAX_PUNTOS = 40;
+        double paso = 0.5;
+        if ((hasta - desde) / paso > MAX_PUNTOS) {
+            double crudo = (hasta - desde) / MAX_PUNTOS;
+            double magnitud = Math.pow(10, Math.floor(Math.log10(crudo)));
+            for (double m : new double[]{1, 2, 5, 10}) {
+                paso = m * magnitud;
+                if (paso >= crudo) break;
+            }
+        }
+        return paso;
+    }
+
+    /*borra los puntos escritos y desactiva el campo (las cotas cambiaron o no se calcularon). */
+    private void desactivarPuntos() {
+        if (campoPuntos == null) return;
+        campoPuntos.clear();
+        campoPuntos.setDisable(true);
+        if (etiquetaIntervalo != null) etiquetaIntervalo.setText("");
+    }
+
+    /**
+     * boton "Calcular cotas": calcula las cotas de P(x) con el metodo elegido, muestra el
+     * intervalo al lado del boton y escribe los puntos por defecto en "Puntos alfa" (editables).
+     */
+    private void verIntervalo() {
+        error.setText("");
+        try {
+            String t = campo.getText().trim();
+            if (t.isEmpty()) throw new IllegalArgumentException("Falta P(x): escrib\u00ed un polinomio.");
+            Polinomio p = parsear(t, "P(x)");
+            if (esConstante(p)) throw new ArithmeticException("P(x) es constante: no tiene ra\u00edces");
+            int num = numeroMetodoCota(metodoCota.getValue());
+            CotasDePolinomio cotas = new CotasDePolinomio();
+            double supPos = cotas.cotaSuperiorPositiva(p, num);
+            double infPos = cotas.cotaInferiorPositiva(p, num);
+            double infNeg = cotas.cotaInferiorNegativa(p, num);
+            double supNeg = cotas.cotaSuperiorNegativa(p, num);
+            List<double[]> tramos = tramosCotas(infNeg, supNeg, infPos, supPos);
+            if (tramos.isEmpty()) {
+                etiquetaIntervalo.setText("Sin ra\u00edces reales seg\u00fan las cotas");
+                campoPuntos.setDisable(true);
+                return;
+            }
+            etiquetaIntervalo.setText(textoTramos(infNeg, supNeg, infPos, supPos));
+            campoPuntos.setDisable(false);
+            campoPuntos.setText(textoPuntosPorDefecto(tramos));   // los puntos por defecto quedan a la vista
+            campoPuntos.requestFocus();
+        } catch (RuntimeException ex) {
+            error.setText("Error: " + (ex.getMessage() != null ? ex.getMessage() : ex.toString()));
+        }
+    }
+
+    /** los intervalos de las cotas: [infNeg, supNeg] (si hay negativas) y [infPos, supPos] (si hay positivas). */
+    private static List<double[]> tramosCotas(double infNeg, double supNeg, double infPos, double supPos) {
+        List<double[]> tramos = new ArrayList<>();
+        if (infNeg != 0) tramos.add(new double[]{infNeg, supNeg});
+        if (supPos != 0) tramos.add(new double[]{infPos, supPos});
+        return tramos;
+    }
+
+    /* "Negativas: [-5/2, -2/5]   Positivas: [1/2, 3]" (o "sin negativas" / "sin positivas"). */
+    private static String textoTramos(double infNeg, double supNeg, double infPos, double supPos) {
+        String neg = infNeg != 0 ? "Negativas: [" + fraccionTexto(infNeg) + ", " + fraccionTexto(supNeg) + "]" : "Sin negativas";
+        String pos = supPos != 0 ? "Positivas: [" + fraccionTexto(infPos) + ", " + fraccionTexto(supPos) + "]" : "Sin positivas";
+        return neg + "    " + pos;
+    }
+
+    /** el intervalo de las cotas que contiene a "a" (con tolerancia por el redondeo), o null si ninguno. */
+    private static double[] tramoDe(double a, List<double[]> tramos) {
+        double tol = 1e-6 * Math.max(1, Math.abs(a));
+        for (double[] t : tramos)
+            if (a >= t[0] - tol && a <= t[1] + tol) return t;
+        return null;
+    }
+
+    /** los puntos por defecto (de 0.5 en 0.5 dentro de cada intervalo) como texto: "-5/2, -2, ...". */
+    private static String textoPuntosPorDefecto(List<double[]> tramos) {
+        List<Double> pts = new ArrayList<>();
+        for (double[] t : tramos) agregarRango(pts, t[0], t[1]);
+        List<String> t = new ArrayList<>();
+        for (double v : pts) t.add(fraccionTexto(v));
+        return String.join(", ", t);
+    }
+
+    /**numero como fraccion si es posible (1/2, -1/3), si no con decimales. */
+    private static String fraccionTexto(double v) {
+        String s = new AnalisisPolinomio().aFraccion(v);
+        if (s.contains("/") && s.length() > 9) return formato(v);   // fracciones muy largas: mejor decimal
+        return s.contains(".") ? formato(v) : s;
+    }
+
+    // =====================  FIN: Sturm =====================
+    private int numeroMetodoCota(String nombre) {
+            switch (nombre) {
+                case "Lagrange":
+                    return 1;
+                case "Laguerre":
+                    return 2;
+                case "Newton":
+                    return 3;
+                default:
+                    throw new IllegalArgumentException(
+                            "Metodo de cota no valido: " + nombre);
+            }
+        }
+    /** Bloque de una cota: titulo y resultado. */
+    private void mostrarCota(String titulo, String resultado) {
         panelResultado.getChildren().add(new Separator());
         panelResultado.getChildren().add(negrita(titulo));
-        panelResultado.getChildren().add(textoMono(polinomio));
         panelResultado.getChildren().add(negrita(resultado));
-    }
-
-    // Cambios de variable (copias de los que son private en CotasDePolinomio vieja)
-    private static Polinomio cambioInfPositiva(Polinomio p) {
-        double[] c = p.getCoeficientes();
-        int fin = c.length;
-        while (fin > 1 && c[fin - 1] == 0) fin--;          // saca el factor x
-        double[] nuevo = new double[fin];
-        for (int i = 0; i < fin; i++) nuevo[i] = c[fin - 1 - i];   // invierte el orden
-        return new Polinomio(nuevo);
-    }
-
-    private static Polinomio cambioInfNegativa(Polinomio p) {
-        double[] c = p.getCoeficientes();
-        int n = p.getGrado();
-        double[] nuevo = new double[c.length];
-        for (int i = 0; i <= n; i++) nuevo[i] = c[i] * Math.pow(-1, n - i);
-        return new Polinomio(nuevo);
-    }
-
-    private static Polinomio cambioSupNegativa(Polinomio p) {
-        return cambioInfNegativa(cambioInfPositiva(p));
     }
 
     // ------------------------------------------------------------------
@@ -1599,6 +1773,7 @@ public class MainFrame extends Application {
         Polinomio resto;
         String metodoTxt;
         int tipo; // 1 = Ruffini, 2 = Horner cuadratico, 0 = sin tabla
+        double[] sumas = null; //fila de abajo de la tabla: cociente + resto (lo devuelve OperacionesPolinomios)
 
         if (m == 0) {
             // Q(x) constante: divisionGeneral devolveria un resto vacio (y Polinomio no admite 0 coeficientes)
@@ -1606,7 +1781,7 @@ public class MainFrame extends Application {
             for (int i = 0; i < cc.length; i++) cc[i] /= qc[0];
             cociente = new Polinomio(cc);
             resto = new Polinomio(new double[]{0.0});
-            metodoTxt = "Divisi\u00f3n por una constante";
+            metodoTxt = "División por una constante";
             tipo = 0;
         } else if (m == 1 && n >= 1) {
             OperacionesPolinomios.ResultadoDivisionLineal r =
@@ -1615,6 +1790,10 @@ public class MainFrame extends Application {
             resto = new Polinomio(new double[]{r.resto});
             metodoTxt = "Horner / Ruffini";
             tipo = 1;
+            // para la tabla: division por (x + beta/alfa) sin dividir por alfa
+            OperacionesPolinomios.ResultadoDivisionLineal sinEscalar =
+                    OperacionesPolinomios.dividirHorner(p, qc[1] / qc[0]);
+            sumas = unir(sinEscalar.cociente.getCoeficientes(), sinEscalar.resto);   
         } else if (m == 2 && n >= 3 && Math.abs(qc[0] - 1) < 1e-12) {
             OperacionesPolinomios.ResultadoDivisionCuadratica r =
                     OperacionesPolinomios.dividirHornerCuadratico(p, qc[1], qc[2]);
@@ -1622,12 +1801,13 @@ public class MainFrame extends Application {
             resto = new Polinomio(new double[]{r.resto1, r.resto0});
             metodoTxt = "Horner / Ruffini doble ";
             tipo = 2;
+            sumas = unir(r.cociente.getCoeficientes(), r.resto1, r.resto0);   
         } else {
             OperacionesPolinomios.ResultadoDivisionGeneral r =
                     OperacionesPolinomios.divisionGeneral(p, q);
             cociente = r.cociente;
             resto = r.resto;
-            metodoTxt = "Divisi\u00f3n general";
+            metodoTxt = "División general";
             tipo = 0;
         }
 
@@ -1642,9 +1822,9 @@ public class MainFrame extends Application {
 
         // 3) Como se hace (tabla)
         if (tipo == 1) {
-            agregarTablaRuffini(p, q);
+            agregarTablaRuffini(p, q, sumas);           
         } else if (tipo == 2) {
-            agregarTablaHornerCuadratico(p, q);
+            agregarTablaHornerCuadratico(p, q, sumas);  
         }
 
         // 4) Cociente y resto
@@ -1660,20 +1840,20 @@ public class MainFrame extends Application {
     // Tablas
     // ------------------------------------------------------------------
 
-    /** Tabla de Horner / Ruffini para un divisor lineal alfa*x + beta. */
-    private void agregarTablaRuffini(Polinomio p, Polinomio q) {
+    /**
+     * Tabla de Horner / Ruffini para un divisor lineal alfa*x + beta.
+     *  "abajo" (cociente + resto) ya viene calculado por OperacionesPolinomios;
+     * aca solo se arma la fila de productos para mostrarla.
+     */
+    private void agregarTablaRuffini(Polinomio p, Polinomio q, double[] abajo) {
         double[] a = p.getCoeficientes();
         double[] qc = q.getCoeficientes();
         double r = -qc[1] / qc[0];          // raiz del divisor
         int n = a.length;
 
         double[] medio = new double[n];     // productos
-        double[] abajo = new double[n];     // sumas
-        abajo[0] = a[0];
-        for (int i = 1; i < n; i++) {
-            medio[i] = abajo[i - 1] * r;
-            abajo[i] = a[i] + medio[i];
-        }
+        for (int i = 1; i < n; i++)
+            medio[i] = abajo[i - 1] * r;    // solo el producto que se muestra (las sumas no se recalculan)
 
         GridPane t = new GridPane();
 
@@ -1693,8 +1873,12 @@ public class MainFrame extends Application {
         panelResultado.getChildren().add(t);
     }
 
-    /** Tabla de Horner para dividir entre x^2 + a x + b. */
-    private void agregarTablaHornerCuadratico(Polinomio p, Polinomio q) {
+    /**
+     * Tabla de Horner para dividir entre x^2 + a x + b.
+     * 
+     * aca solo se arman las filas de productos para mostrarlas.
+     */
+    private void agregarTablaHornerCuadratico(Polinomio p, Polinomio q, double[] s) {
         double[] P = p.getCoeficientes();
         double[] qc = q.getCoeficientes();
         double a = qc[1], b = qc[2];
@@ -1702,13 +1886,8 @@ public class MainFrame extends Application {
 
         double[] fila1 = new double[n + 1];   // productos de -a
         double[] fila2 = new double[n + 1];   // productos de -b
-        double[] s = new double[n + 1];       // sumas
-
-        for (int j = 0; j <= n; j++) {
-            if (j >= 1 && j <= n - 1) fila1[j] = -a * s[j - 1];
-            if (j >= 2)               fila2[j] = -b * s[j - 2];
-            s[j] = P[j] + fila1[j] + fila2[j];
-        }
+        for (int j = 1; j <= n - 1; j++) fila1[j] = -a * s[j - 1];   
+        for (int j = 2; j <= n; j++)     fila2[j] = -b * s[j - 2];   // (las sumas no se recalculan)
 
         GridPane t = new GridPane();
 
@@ -1733,6 +1912,14 @@ public class MainFrame extends Application {
             t.add(celda(formato(s[j]), j == 0, true, j >= n - 1), j + 1, 3);
 
         panelResultado.getChildren().add(t);
+    }
+
+    /*une los coeficientes del cociente con el resto: la fila de abajo de la tabla. */
+    private static double[] unir(double[] cociente, double... resto) {
+        double[] fila = new double[cociente.length + resto.length];
+        System.arraycopy(cociente, 0, fila, 0, cociente.length);
+        System.arraycopy(resto, 0, fila, cociente.length, resto.length);
+        return fila;
     }
 
     /** Celda de la tabla. conLineaIzq: linea vertical; conLineaSup: linea horizontal; resto: resaltada. */

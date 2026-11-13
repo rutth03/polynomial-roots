@@ -33,7 +33,7 @@ public class RaicesSolver {
             }*/
 
             /* Condición de corte: |x_{n+1} - x_n| */
-            if (Math.abs(xn1 - xn) < epsilon) { 
+           if (Math.abs(xn1 - xn) < epsilon && Math.abs(pol.evaluar(xn1)) < epsilon) { 
                 break;
             }
 
@@ -71,7 +71,8 @@ public class RaicesSolver {
             // {dP; d2P} = HornerDoble(c[], n-1, x_n)
             // Formula Halley: x_{n+1} = x_n - (2 * P * dP) / (2 * dP * dP - P * d2P)
             double numerador = 2.0 * valorP * valorDP;
-            double denominador = (2.0 * valorDP * valorDP) - (valorP * valorD2P);
+            double denominador = (2.0 * valorDP * valorDP) - (2.0 * valorP * valorD2P);
+          /* double denominador = (2.0 * valorDP * valorDP) - (valorP * valorD2P);*/ 
 
             if (Math.abs(denominador) < 1e-14) {
                 throw new ArithmeticException("Denominador cercano a cero en el método de Halley.");
@@ -87,7 +88,7 @@ public class RaicesSolver {
             } */
 
             /* Condición de corte: |x_{n+1} - x_n| */
-            if (Math.abs(xn1 - xn) < epsilon) {
+            if (Math.abs(xn1 - xn) < epsilon && Math.abs(pol.evaluar(xn1)) < epsilon) {
                 break;
             } 
 

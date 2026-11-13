@@ -8,15 +8,36 @@ public class AnalisisPolinomio {
 	private Polinomio polinomio;//ultimo polinomio que se analizó (null si todavía no se analizó ninguno)
 	private ArrayList<Integer> enteras;//raíces enteras de ese polinomio
 	private ArrayList<Double> racionales;//raíces racionales (no enteras) de ese polinomio
+	private ArrayList<double[]> tablaEnteras = new ArrayList<>();
+	private ArrayList<double[]> tablaRacionales = new ArrayList<>();
+	private ArrayList<Integer> tablaDivisoresA0 = new ArrayList<>();
+	private ArrayList<Integer> tablaDivisoresAn = new ArrayList<>();
+	private Polinomio tablaPolinomioEntero;
+	private Polinomio tablaPolinomioSinCeros;
+	private int tablaMultiplicidadCero;
+
+	public ArrayList<double[]> getTablaEnteras(){ return tablaEnteras; }
+	public ArrayList<double[]> getTablaRacionales(){ return tablaRacionales; }
+	public ArrayList<Integer> getDivisoresA0(){ return tablaDivisoresA0; }
+	public ArrayList<Integer> getDivisoresAn(){ return tablaDivisoresAn; }
+	public Polinomio getPolinomioEntero(){ return tablaPolinomioEntero; }
+	public Polinomio getPolinomioSinCeros(){ return tablaPolinomioSinCeros; }
+	public int getMultiplicidadCero(){ return tablaMultiplicidadCero; }
 	
 	//MÉTODOS
 	//-----------------Raices Enteras------------------
 	public ArrayList<Integer> raicesEnteras(Polinomio p){
 		ArrayList<Integer> raices = new ArrayList<>();
+		tablaEnteras.clear();
+		tablaDivisoresA0.clear();
+		tablaPolinomioEntero = p;
+		tablaPolinomioSinCeros = p;
+		tablaMultiplicidadCero = 0;
 		if(p.getGrado()!=0){
 			if(!todosEnteros(p)){//Caso donde veo si todos los coeficientes NO son enteros
 				Polinomio q=volverEnteros(p);//Vuelvo a hacer el polinomio con todos los coeficientes enteros
-				if(q!=p){
+				tablaPolinomioEntero = (q!=p) ? q : null;
+					if(q!=p){
 					System.out.println("Se ha modificado el polinomio para que todos sus coeficientes sean enteros: " + q);
 					probarDivisores(q,raices);
 				}
@@ -36,6 +57,8 @@ public class AnalisisPolinomio {
 	//-----------------Raices Racionales------------------
 	public ArrayList<Double> raicesRacionales(Polinomio p){
 		ArrayList<Double> raices= new ArrayList<>();
+		tablaRacionales.clear();
+		tablaDivisoresAn.clear();
 		if(p.getGrado()!=0){
 			if(!todosEnteros(p)){
 				Polinomio q=volverEnteros(p);
@@ -130,14 +153,19 @@ public class AnalisisPolinomio {
 	private void probarDivisores(Polinomio p, ArrayList<Integer> raices){
 		if(Math.round(terminoIndependiente(p)) == 0){//en caso del que termino independiente sea cero
 			raices.add(0);//x=0 es una raiz por que anula toda la expresion
+			int gradoAntes=p.getGrado();
 			p=quitarCeros(p);//el polinomio se actualizo y sigue con lo que queda despues de sacar el factor x
+			tablaMultiplicidadCero=gradoAntes-p.getGrado(); //cuántos factores x se sacaron
 		}
+		tablaPolinomioSinCeros=p;
 		if(p.getGrado()!=0){
 			double d=terminoIndependiente(p);//Obtengo el termino independiente del polinomio
 			ArrayList<Integer>divisores=obtenerDivisores(d);//Obtengo los divisores del termino independiente
+			tablaDivisoresA0.addAll(divisores);
 			for(int i=0;i<divisores.size();i++){
 				int r=divisores.get(i);
 				ResultadoDivisionLineal resultado = OperacionesPolinomios.dividirHorner(p, -r);
+				tablaEnteras.add(new double[]{r, Math.abs(resultado.resto)<1e-10 ? 1 : 0});
 				if(Math.abs(resultado.resto)<1e-10){
 					raices.add(r);
 				}
@@ -180,6 +208,7 @@ public class AnalisisPolinomio {
 		double q=coeficientePrincipal(polinomio);
 		double p=terminoIndependiente(polinomio);
 		ArrayList<Integer> divisoresQ=obtenerDivisores(q);
+		tablaDivisoresAn.addAll(divisoresQ);
 		ArrayList<Integer> divisoresP=obtenerDivisores(p);
 		ArrayList<Double> combinaciones = new ArrayList<>();
 		for(int i=0;i<divisoresQ.size();i++){
@@ -209,6 +238,7 @@ public class AnalisisPolinomio {
 			for(int i=0;i<divisores.size();i++){
 				double r=divisores.get(i);
 				ResultadoDivisionLineal resultado = OperacionesPolinomios.dividirHorner(p, -r);
+				tablaRacionales.add(new double[]{r, Math.abs(resultado.resto)<1e-10 ? 1 : 0});
 				if(Math.abs(resultado.resto)<1e-10){
 					raices.add(r);
 				}
