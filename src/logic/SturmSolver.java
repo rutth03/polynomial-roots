@@ -1,16 +1,21 @@
+
 package logic;
 
 import java.util.ArrayList;
-
 import model.Polinomio;
 
 public class SturmSolver{
-    // interfaz
-    private ArrayList<Polinomio> sucesionOriginal = new ArrayList<>(); 
-    private Polinomio mcd = null;                                      
+    //interfaz
+	private ArrayList<Polinomio> sucesionOriginal = new ArrayList<>();
+    private Polinomio mcd;
 
-    public ArrayList<Polinomio> getSucesionOriginal(){ return sucesionOriginal; } 
-    public Polinomio getMcd(){ return mcd; }                                      
+    public ArrayList<Polinomio> getSucesionOriginal() {
+        return sucesionOriginal;
+    }
+
+    public Polinomio getMcd() {
+        return mcd;
+    }
 
     /**
      * Construye la sucesión de Sturm para un polinomio P(x).
@@ -18,108 +23,69 @@ public class SturmSolver{
      * f1(x) = P'(x)
      * fk(x) = - resto(f_{k-2}, f_{k-1}) * lambda_k
      */
-
     public ArrayList<Polinomio> generarSucesion(Polinomio p){
+	    sucesionOriginal = new ArrayList<>();
+        mcd = null;
         ArrayList<Polinomio> sturm = new ArrayList<>();
-        mcd=null;
+
         //f0(x) = P(x)
         sturm.add(p);
 
         //f1(x) = P'(x)
         Polinomio f1 = p.derivar();
-        if(f1.getGrado() == 0 && f1.getCoeficiente(0) == 0.0){
-            sucesionOriginal = new ArrayList<>(sturm);
+
+        if(f1.getGrado() == 0 && f1.getCoeficiente(0) == 0.0)
             return sturm; //si f' es cero
-        }
 
         sturm.add(f1);
 
-        boolean terminoEnCero = completar(sturm); 
-        sucesionOriginal = new ArrayList<>(sturm);
+        int i = 1;
 
-        //  (raices multiples)
-        Polinomio ultimo = sturm.get(sturm.size() - 1);
-        if(terminoEnCero && ultimo.getGrado() > 0){
-            mcd = ultimo;
-            ArrayList<Polinomio> reducida = new ArrayList<>();
-            Polinomio g0 = quitarCeros(OperacionesPolinomios.divisionGeneral(sturm.get(0), mcd).cociente); 
-            reducida.add(g0);
-            if(g0.getGrado() > 0){
-                reducida.add(g0.derivar()); 
-                completar(reducida);
-            }
-            return reducida;
+        while(true){
+
+            //dividimos f_{i-1} entre f_i para obtener el resto
+            OperacionesPolinomios.ResultadoDivisionGeneral div =
+                OperacionesPolinomios.divisionGeneral2(
+                    sturm.get(i-1), sturm.get(i)
+                );
+
+            Polinomio resto = div.resto;
+
+            //si resto = 0, la sucesion regular termina
+            if(resto.getGrado() == 0 &&
+               Math.abs(resto.getCoeficiente(0)) < 1e-12){
+		sucesionOriginal = new ArrayList<>(sturm);
+		mcd = sturm.get(sturm.size() - 1);
+		break;
+		}
+                
+
+            //invertimos el signo del resto
+            Polinomio siguiente =
+                OperacionesPolinomios.multiplicarEscalar(resto, -1.0);
+
+            sturm.add(siguiente);
+            i++;
+
+            if(sturm.get(i).getGrado() == 0)
+                break;
         }
+	if(sucesionOriginal.isEmpty()){
+		sucesionOriginal = new ArrayList<>(sturm);
+	}
         return sturm;
     }
 
-    /* agrega f2, f3, ... a la sucesion. Devuelve true si termino porque el resto dio 0. */
-    private boolean completar(ArrayList<Polinomio> sturm){
-        int i = sturm.size() - 1;
-        while(true){
-            if(sturm.get(i).getGrado() == 0) 
-                return false;
-            OperacionesPolinomios.ResultadoDivisionGeneral div = OperacionesPolinomios.divisionGeneral(sturm.get(i-1),sturm.get(i));
-            Polinomio resto = quitarCeros(div.resto); 
-
-            //si resto = 0, la sucesion regular termina
-            if(resto.getGrado() == 0 && Math.abs(resto.getCoeficiente(0)) < 1e-12)
-                return true;
-
-            //invertimos el signo del resto
-            Polinomio siguiente = OperacionesPolinomios.multiplicarEscalar(resto, -1.0);
-
-            sturm.add(normalizar(siguiente)); 
-            i++;
-        }
-    }
-
-    private static Polinomio quitarCeros(Polinomio p){
-        double[] c = p.getCoeficientes();
-        double max = 0;
-        for(double v : c) max = Math.max(max, Math.abs(v));
-        int i = 0;
-        while(i < c.length - 1 && Math.abs(c[i]) <= 1e-9 * Math.max(1, max)) i++;
-        double[] r = new double[c.length - i];
-        System.arraycopy(c, i, r, 0, r.length);
-        if(r.length == 0) r = new double[]{0.0};
-        return new Polinomio(r);
-    }
-
-    private static Polinomio normalizar(Polinomio p){
-        double[] c = p.getCoeficientes();
-        for(int k = 1; k <= 100000; k++){
-            long[] e = new long[c.length];
-            boolean enteros = true;
-            for(int i = 0; i < c.length && enteros; i++){
-                double v = c[i] * k;
-                if(Math.abs(v) > 1e15 || Math.abs(v - Math.rint(v)) > 1e-6 * Math.max(1, Math.abs(v))) enteros = false;
-                else e[i] = Math.round(v);
-            }
-            if(enteros){
-                long g = 0;
-                for(long v : e) g = mcdEnteros(g, Math.abs(v));
-                if(g == 0) return p;
-                double[] r = new double[c.length];
-                for(int i = 0; i < c.length; i++) r[i] = (double) (e[i] / g);
-                return new Polinomio(r);
-            }
-        }
-        // si no se encontraron enteros: se divide por el valor absoluto del coeficiente principal
-        return OperacionesPolinomios.multiplicarEscalar(p, 1.0 / Math.abs(c[0]));
-    }
-
-    private static long mcdEnteros(long a, long b){ 
-        while(b != 0){ long t = a % b; a = b; b = t; }
-        return a;
-    }
-
     /**
-     * Cuenta la cantidad de cambios de signo N(alpha) en la sucesión de Sturm al evaluar en x = alpha.
+     * Cuenta la cantidad de cambios de signo N(alpha)
+     * en la sucesión de Sturm al evaluar en x = alpha.
      * No se cuentan los ceros exactos según la teoría de Sturm.
      */
-    public int calcularCambiosDeSigno(ArrayList<Polinomio> sturm, double alpha){
+    public int calcularCambiosDeSigno(
+        ArrayList<Polinomio> sturm, double alpha
+    ){
         ArrayList<Double> valores = new ArrayList<>();
+
         for(Polinomio pol : sturm)
             valores.add(pol.evaluar(alpha));
 
@@ -127,57 +93,250 @@ public class SturmSolver{
         Double signoAnterior = null;
 
         for(double val : valores){
+
             //si el valor es cero se ignora
             if(Math.abs(val) < 1e-12)
                 continue;
 
             double signoActual = Math.signum(val);
+
             if(signoAnterior != null){
                 if(signoAnterior * signoActual < 0)
                     cambios++;
             }
+
             signoAnterior = signoActual;
         }
+
         return cambios;
-    }
-
-    
-    public ArrayList<Double> subdividir(Polinomio p, ArrayList<Polinomio> sturm, ArrayList<Double> puntos){
-        ArrayList<Double> pts = new ArrayList<>(puntos);
-        pts.sort(Double::compare);
-        for(int vuelta = 0; vuelta < 60; vuelta++){ // tope de seguridad
-            boolean agrego = false;
-            for(int j = 0; j + 1 < pts.size(); j++){
-                double a = pts.get(j), b = pts.get(j + 1);
-                int d = Math.abs(calcularCambiosDeSigno(sturm, a) - calcularCambiosDeSigno(sturm, b));
-                if(d > 1 && b - a > 1e-9){
-                    pts.add(j + 1, puntoMedio(p, a, b));
-                    j++;
-                    agrego = true;
-                }
-            }
-            if(!agrego) break;
-        }
-        return pts;
-    }
-
-    public static double puntoMedio(Polinomio p, double a, double b){
-        double[] t = {0.5, 0.25, 0.75, 0.375, 0.625};
-        for(double k : t){
-            double m = a + (b - a) * k;
-            if(Math.abs(p.evaluar(m)) > 1e-9) return m;
-        }
-        return a + (b - a) * 0.4142;
     }
 
     /**
      * Calcula la cantidad de raíces reales de P(x) en el intervalo [a, b]
      * utilizando el Teorema de Sturm: N_raices = |N(a) - N(b)|
      */
-    public int contarRaicesEnIntervalo(Polinomio p, double a, double b){
+    public int contarRaicesEnIntervalo(
+        Polinomio p, double a, double b
+    ){
         ArrayList<Polinomio> sturm = generarSucesion(p);
+
         int na = calcularCambiosDeSigno(sturm, a);
         int nb = calcularCambiosDeSigno(sturm, b);
+
         return Math.abs(na - nb);
     }
+
+    public String contarRaicesConCotas(Polinomio p, int metodo) {
+
+        CotasDePolinomio cotas = new CotasDePolinomio();
+
+        // Obtenemos las cuatro cotas automáticamente
+        double supPositiva = cotas.cotaSuperiorPositiva(p, metodo);
+        double infPositiva = cotas.cotaInferiorPositiva(p, metodo);
+        double infNegativa = cotas.cotaInferiorNegativa(p, metodo);
+        double supNegativa = cotas.cotaSuperiorNegativa(p, metodo);
+
+        String resultado = "";
+
+        // Analizamos las raices positivas
+        if (supPositiva != 0) {
+            int raicesPositivas =
+                contarRaicesEnIntervalo(p, infPositiva, supPositiva);
+
+            resultado += "Intervalo positivo: [" + infPositiva + ", "
+                + supPositiva + "]\n";
+
+            resultado += "Cantidad de raices positivas: "
+                + raicesPositivas + "\n";
+
+        } else {
+            resultado += "No hay raices positivas.\n";
+        }
+
+        // Analizamos las raices negativas
+        if (infNegativa != 0) {
+            int raicesNegativas =
+                contarRaicesEnIntervalo(p, infNegativa, supNegativa);
+
+            resultado += "Intervalo negativo: [" + infNegativa + ", "
+                + supNegativa + "]\n";
+
+            resultado += "Cantidad de raices negativas: "
+                + raicesNegativas + "\n";
+
+        } else {
+            resultado += "No hay raices negativas.\n";
+        }
+
+        return resultado;
+    }
+
+    // SUBDIVISION AUTOMATICA DE INTERVALOS
+    // Obtiene las cotas y busca automaticamente los subintervalos
+    public String aislarRaicesConCotas(Polinomio p, int metodo) {
+
+        CotasDePolinomio cotas = new CotasDePolinomio();
+
+        double supPositiva = cotas.cotaSuperiorPositiva(p, metodo);
+        double infPositiva = cotas.cotaInferiorPositiva(p, metodo);
+        double infNegativa = cotas.cotaInferiorNegativa(p, metodo);
+        double supNegativa = cotas.cotaSuperiorNegativa(p, metodo);
+
+        StringBuilder resultado = new StringBuilder();
+
+        resultado.append("SUBINTERVALOS DE RAICES\n\n");
+
+        // Buscamos las raices positivas
+        if (supPositiva != 0) {
+            resultado.append("Raices positivas:\n");
+            buscarSubintervalos(
+                p, infPositiva, supPositiva, resultado, 0
+            );
+        } else {
+            resultado.append("No hay raices positivas.\n");
+        }
+
+        resultado.append("\n");
+
+        // Buscamos las raices negativas
+        if (infNegativa != 0) {
+            resultado.append("Raices negativas:\n");
+            buscarSubintervalos(
+                p, infNegativa, supNegativa, resultado, 0
+            );
+        } else {
+            resultado.append("No hay raices negativas.\n");
+        }
+
+        return resultado.toString();
+    }
+
+    // Divide los intervalos hasta aislar las raices
+    private void buscarSubintervalos(
+        Polinomio p, double a, double b,
+        StringBuilder resultado, int profundidad
+    ) {
+
+        double anchoMaximo = 1.0;
+        int profundidadMaxima = 60;
+
+        // Contamos las raices del intervalo actual
+        int cantidad = contarRaicesEnIntervalo(p, a, b);
+
+        // Si no hay raices, descartamos el intervalo
+        if (cantidad == 0) {
+            return;
+        }
+
+        // Si hay una sola raiz y el intervalo es pequeño, lo mostramos
+        if (cantidad == 1 && (b - a) <= anchoMaximo) {
+            resultado.append("[")
+                .append(a).append(", ")
+                .append(b).append("] -> 1 raiz\n");
+            return;
+        }
+
+        // Evitamos subdivisiones infinitas
+        if (profundidad >= profundidadMaxima) {
+            resultado.append("[")
+                .append(a).append(", ")
+                .append(b).append("] -> ")
+                .append(cantidad)
+                .append(" raices (limite de profundidad)\n");
+            return;
+        }
+
+        // Calculamos el punto medio
+        double medio = a + (b - a) / 2.0;
+
+        // Comprobamos que se pueda seguir dividiendo
+        if (medio == a || medio == b) {
+            resultado.append("[")
+                .append(a).append(", ")
+                .append(b).append("] -> ")
+                .append(cantidad).append(" raices\n");
+            return;
+        }
+
+        // Dividimos el intervalo en dos partes
+        buscarSubintervalos(
+            p, a, medio, resultado, profundidad + 1
+        );
+
+        buscarSubintervalos(
+            p, medio, b, resultado, profundidad + 1
+        );
+    }
+
+    // Obtiene los intervalos aislantes como datos numericos para graficarlos
+    public ArrayList<double[]> obtenerIntervalosAislantes(
+        Polinomio p, int metodo
+    ) {
+
+        CotasDePolinomio cotas = new CotasDePolinomio();
+
+        double supPositiva = cotas.cotaSuperiorPositiva(p, metodo);
+        double infPositiva = cotas.cotaInferiorPositiva(p, metodo);
+        double infNegativa = cotas.cotaInferiorNegativa(p, metodo);
+        double supNegativa = cotas.cotaSuperiorNegativa(p, metodo);
+
+        ArrayList<double[]> intervalos = new ArrayList<>();
+
+        if (supPositiva != 0) {
+            buscarIntervalosGraficos(
+                p, infPositiva, supPositiva, intervalos, 0
+            );
+        }
+
+        if (infNegativa != 0) {
+            buscarIntervalosGraficos(
+                p, infNegativa, supNegativa, intervalos, 0
+            );
+        }
+
+        return intervalos;
+    }
+
+    // Busca intervalos que contienen una sola raiz
+    private void buscarIntervalosGraficos(
+        Polinomio p, double a, double b,
+        ArrayList<double[]> intervalos, int profundidad
+    ) {
+
+        double anchoMaximo = 1.0;
+        int profundidadMaxima = 60;
+
+        int cantidad = contarRaicesEnIntervalo(p, a, b);
+
+        if (cantidad == 0) {
+            return;
+        }
+
+        if (cantidad == 1 && (b - a) <= anchoMaximo) {
+            intervalos.add(new double[]{a, b});
+            return;
+        }
+
+        if (profundidad >= profundidadMaxima) {
+            return;
+        }
+
+        double medio = a + (b - a) / 2.0;
+
+        if (medio == a || medio == b) {
+            return;
+        }
+
+        buscarIntervalosGraficos(
+            p, a, medio, intervalos, profundidad + 1
+        );
+
+        buscarIntervalosGraficos(
+            p, medio, b, intervalos, profundidad + 1
+        );
+    }
+
+	public static double puntoMedio(Polinomio p, double a, double b) {
+    return a + (b - a) / 2.0;
+}
 }
