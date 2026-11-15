@@ -11,11 +11,13 @@ Aplicación interactiva para el análisis de polinomios y localización de raíc
 El objetivo general es implementar un software liviano y modular bajo el patrón **MVC (Modelo - Vista - Controlador)** en **Java** y **JavaFX**. Permite realizar operaciones algebraicas sobre polinomios y aplicar métodos numéricos directos e iterativos para la acotación y cálculo de raíces.
 
 ### Módulos y Funcionalidades
-* **Operaciones Polinómicas:** Evaluación de polinomios por regla de Horner, división sintética por $(ax \pm b)$ y por cuadráticos $(x^2 + px + q)$.
+* **Operaciones Polinómicas:** Evaluación de polinomios por regla de Horner y división sintética o general de polinomios.
+* **Evaluación directa:** Evalúa P(x) en un punto ingresado por el usuario.
 * **Localización de Raíces:** Determinación de posibles raíces enteras y racionales.
 * **Acotación y Aislamiento:** Cotas superiores/inferiores para raíces reales (métodos de Laguerre, Lagrange y Newton - Teorema de Sturm).
 * **Localización de Raíces Complejas:** Método de Bairstow.
 * **Visualización Gráfica:** Interfaz basada en JavaFX para el trazado de funciones polinómicas y selección de intervalos.
+* **Casos de prueba:** Cada operación ofrece ejemplos precargados desde el selector superior; al elegir uno se completan automáticamente los campos correspondientes.
 
 ---
 
@@ -64,6 +66,8 @@ cd polynomial-roots
 3. En el menú desplegable superior, confirma que esté seleccionada la configuración **Ejecutar Aplicación**.
 4. Presiona la tecla F5 o el botón verde de Play.
 
+En la aplicación, selecciona una operación y luego un elemento de **Casos de prueba** para cargar un ejemplo predefinido. Los ejemplos no se pueden agregar ni eliminar desde la interfaz.
+
 ## Estructura del Proyecto
 ```
 src/
@@ -75,7 +79,6 @@ src/
  │    ├── BairstowSolver.java        <-- Método de Bairstow para raíces complejas/cuadráticas
  │    └── AnalisisPolinomio.java     <-- Criterio de Gauss (raíces enteras/racionales) y Cotas (Lagrange, Laguerre y Newton)
  ├── model/
- │    ├── Intervalo.java
  │    ├── Polinomio.java
  │    └── RaizResult.java
  └── Main.java

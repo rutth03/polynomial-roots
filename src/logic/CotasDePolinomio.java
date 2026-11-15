@@ -8,7 +8,6 @@ public class CotasDePolinomio{
     public double cotaLagrange(Polinomio p) {
         double cota;
         if (!tieneCoeficienteNegativo(p)) {
-            System.out.println("No hay raíces positivas, por lo que no se puede calcular la cota de Lagrange");
             return 0;
         }
         if(coeficientePrincipal(p)<0) {
@@ -19,7 +18,6 @@ public class CotasDePolinomio{
         if(k!=-1){
            double A=coeficienteNegativoMaximo(p);
            cota=1+Math.pow(A/a_0,1.0/k);
-           System.out.println("Se encontro la cota superior por Lagrange que es: " + cota);
            return cota;
         }
         return 0;
@@ -30,7 +28,6 @@ public class CotasDePolinomio{
             return 0;
         }
         if (!tieneCoeficienteNegativo(p)) {
-            System.out.println("No hay raíces positivas, por lo que no se puede calcular la cota de Laguerre");
             return 0;
         }
         double a_0= coeficientePrincipal(p);
@@ -39,10 +36,8 @@ public class CotasDePolinomio{
         }
         double L=1;
         while(!esCotaLaguerre(p, L)){
-            System.out.println("L = " + L + "no sirve, pruebo con el siguiente");
             L=L+0.5;
         }
-        System.out.println("Se encontro la cota superior por Laguerre que es: " + L);
         return L;
     }
 
@@ -51,7 +46,6 @@ public class CotasDePolinomio{
             return 0;
         }
         if (!tieneCoeficienteNegativo(p)) {
-            System.out.println("No hay raíces positivas, por lo que no se puede calcular la cota de Newton");
             return 0;
         }
         double a_0= coeficientePrincipal(p);
@@ -62,7 +56,6 @@ public class CotasDePolinomio{
         while(!esCotaNewton(p, a)){
             a=a+0.5;
         }
-        System.out.println("Se encontro la cota superior por Newton que es: " + a);
         return a;
     }
     //-----------------CAMBIO DE VARIABLES------------------
@@ -78,7 +71,6 @@ public class CotasDePolinomio{
             return cotaNewton(p);
         }
         else{
-            System.out.println("El metodo ingresado no es valido");
             return 0;
         }
     }
@@ -88,7 +80,6 @@ public class CotasDePolinomio{
             return cotaSuperior(p,metodo);
         }
         else{
-            System.out.println("El polinomio no tiene grado, por lo que no tengo raíces");
             return 0;
         }
     }
@@ -102,7 +93,6 @@ public class CotasDePolinomio{
             return 1/L;
         }
         else{
-            System.out.println("El polinomio no tiene grado, por lo que no tengo raíces");
             return 0;
         }
     }
@@ -116,7 +106,6 @@ public class CotasDePolinomio{
             return -L;
         }
         else{
-            System.out.println("El polinomio no tiene grado, por lo que no tengo raíces");
             return 0;
         }
     }
@@ -131,7 +120,6 @@ public class CotasDePolinomio{
             return -1/L;
         }
         else{
-            System.out.println("El polinomio no tiene grado, por lo que no tengo raíces");
             return 0;
         }
     }

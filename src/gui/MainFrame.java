@@ -25,6 +25,8 @@ import javafx.stage.StageStyle;
 import logic.AnalisisPolinomio;
 import logic.BairstowSolver;
 import logic.BairstowSolver.RaizCompleja;
+import logic.CasosDePrueba;
+import logic.CasosDePrueba.Caso;
 import logic.CotasDePolinomio;
 import logic.OperacionesPolinomios;
 import logic.OperacionesPolinomios.ResultadoHornerDoble;
@@ -66,19 +68,25 @@ public class MainFrame extends Application {
             "-fx-font-family: 'Consolas', 'Monospaced'; -fx-font-size: 18px;";
 
     // Metodos disponibles
-    private static final String M_HORNER = "Horner / Ruffini (división)";
-    private static final String M_NEWTON = "Newton";
-    private static final String M_HALLEY = "Halley";
-    private static final String M_RAICES = "Raíces enteras y racionales";
-    private static final String M_BAIRSTOW = "Bairstow";
-    private static final String M_COTAS = "Cotas de las raíces";
-    private static final String M_STURM = "Sturm";   
+    private static final String M_EVALUAR = CasosDePrueba.EVALUAR;
+    private static final String M_DIVISION = CasosDePrueba.HORNER;
+    private static final String M_NEWTON = CasosDePrueba.NEWTON;
+    private static final String M_HALLEY = CasosDePrueba.HALLEY;
+    private static final String M_RAICES = CasosDePrueba.RAICES;
+    private static final String M_BAIRSTOW = CasosDePrueba.BAIRSTOW;
+    private static final String M_COTAS = CasosDePrueba.COTAS;
+    private static final String M_STURM = CasosDePrueba.STURM;
 
     private ComboBox<String> metodo;  // metodo elegido
+    private ComboBox<Caso> casosDePrueba;
     private TextField campo;        // P(x)
     private TextField campoQ;       // Q(x), divisor
     private Label etiquetaQ;        // etiqueta "Q(x) ="
+    private TextField campoPuntoEvaluacion;
+    private HBox grupoPuntoEvaluacion;
+    private HBox filaParametros;
     private TextField campoX0;      // Newton: valor inicial
+    private Button botonPrevisualizarX0;
     private TextField campoEps;     // Newton: tolerancia
     private TextField campoIter;    // Newton: maximo de iteraciones
     private HBox parametrosNewton;  // fila con x0 (o r0 y s0), epsilon, maxIter
@@ -164,9 +172,16 @@ public class MainFrame extends Application {
         Label etiquetaMetodo = new Label("Operación:");
         etiquetaMetodo.setStyle("-fx-font-size: 18px;");
         metodo = new ComboBox<>();
-        metodo.getItems().addAll(M_HORNER, M_NEWTON, M_HALLEY, M_BAIRSTOW, M_RAICES, M_COTAS, M_STURM);  
-        metodo.setValue(M_HORNER);
+        metodo.getItems().addAll(M_EVALUAR, M_DIVISION, M_NEWTON, M_HALLEY,
+                M_BAIRSTOW, M_RAICES, M_COTAS, M_STURM);
+        metodo.setValue(M_DIVISION);
         metodo.setStyle("-fx-font-size: 16px;");
+        Label etiquetaCasos = new Label("Casos de prueba:");
+        etiquetaCasos.setStyle("-fx-font-size: 18px;");
+        casosDePrueba = new ComboBox<>();
+        casosDePrueba.setPromptText("Seleccionar caso");
+        casosDePrueba.setPrefWidth(230);
+        casosDePrueba.setStyle("-fx-font-size: 16px;");
         etiquetaCota = new Label("Cota por:");
         etiquetaCota.setStyle("-fx-font-size: 18px;");
         metodoCota = new ComboBox<>();
@@ -177,7 +192,8 @@ public class MainFrame extends Application {
         botonIntervalo.setMinWidth(140);
         etiquetaIntervalo = new Label();
         etiquetaIntervalo.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + COLOR_ENCABEZADO + ";");
-        HBox filaMetodo = new HBox(10, etiquetaMetodo, metodo, etiquetaCota, metodoCota, botonIntervalo, etiquetaIntervalo);
+        HBox filaMetodo = new HBox(10, etiquetaMetodo, metodo, etiquetaCasos, casosDePrueba,
+                etiquetaCota, metodoCota, botonIntervalo, etiquetaIntervalo);
         filaMetodo.setAlignment(Pos.CENTER_LEFT);
 
         // ---------- Entradas: P(x) y Q(x) ----------
@@ -191,6 +207,17 @@ public class MainFrame extends Application {
 
         etiquetaQ = new Label("Q(x) =");
         etiquetaQ.setStyle("-fx-font-size: 18px;");
+
+        campoPuntoEvaluacion = new TextField();
+        campoPuntoEvaluacion.setPromptText("x a evaluar");
+        campoPuntoEvaluacion.setStyle(ESTILO_CAMPO);
+        campoPuntoEvaluacion.setPrefColumnCount(10);
+        Label etiquetaPuntoEvaluacion = new Label("Punto x =");
+        etiquetaPuntoEvaluacion.setStyle("-fx-font-size: 18px;");
+        grupoPuntoEvaluacion = new HBox(10, etiquetaPuntoEvaluacion, campoPuntoEvaluacion);
+        grupoPuntoEvaluacion.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(campoPuntoEvaluacion, Priority.ALWAYS);
+        campoPuntoEvaluacion.setOnAction(e -> calcular());
 
         // ---------- Parametros de Newton ----------
         campoX0 = new TextField("1");
@@ -229,11 +256,18 @@ public class MainFrame extends Application {
         Label ls0 = new Label("s₀ =");
         lr0.setStyle("-fx-font-size: 18px;");
         ls0.setStyle("-fx-font-size: 18px;");
-        grupoX0 = new HBox(10, lx0, campoX0);
+        botonPrevisualizarX0 = boton("Graficar para elegir x₀", this::previsualizarParaX0);
+        botonPrevisualizarX0.setMinWidth(190);
+        botonPrevisualizarX0.setStyle(ESTILO_BOTON);
+        botonPrevisualizarX0.setDisable(campo.getText().trim().isEmpty());
+        campo.textProperty().addListener((o, a, b) ->
+                botonPrevisualizarX0.setDisable(!esIterativo() || b.trim().isEmpty()));
+        grupoX0 = new HBox(10, lx0, campoX0, botonPrevisualizarX0);
         grupoX0.setAlignment(Pos.CENTER_LEFT);
         grupoRS = new HBox(10, lr0, campoR0, ls0, campoS0);
         grupoRS.setAlignment(Pos.CENTER_LEFT);
         parametrosNewton = new HBox(10, grupoX0, grupoRS, leps, campoEps, liter, campoIter);
+        filaParametros = new HBox(10, grupoPuntoEvaluacion, parametrosNewton);
         campoPuntos = new TextField();
         campoPuntos.setPromptText("Toc\u00e1 \"Calcular cotas\": los puntos por defecto aparecen ac\u00e1 y los pod\u00e9s cambiar");   
         campoPuntos.setDisable(true);   
@@ -282,6 +316,9 @@ public class MainFrame extends Application {
         campo.focusedProperty().addListener((o, a, enfocado) -> {
             if (enfocado) activo = campo;
         });
+        campoPuntoEvaluacion.focusedProperty().addListener((o, a, enfocado) -> {
+            if (enfocado) activo = campoPuntoEvaluacion;
+        });
         campoQ.focusedProperty().addListener((o, a, enfocado) -> {
             if (enfocado) activo = campoQ;
         });
@@ -308,8 +345,8 @@ public class MainFrame extends Application {
         formulario.add(campo, 1, 0);
         formulario.add(etiquetaQ, 0, 1);
         formulario.add(campoQ, 1, 1);
-        formulario.add(parametrosNewton, 0, 2, 2, 1);
-        formulario.add(bloqueSturm, 0, 3, 2, 1);   
+        formulario.add(filaParametros, 0, 2, 2, 1);
+        formulario.add(grupoSturm, 0, 3, 2, 1);   
         GridPane.setHgrow(campo, Priority.ALWAYS);
         GridPane.setHgrow(campoQ, Priority.ALWAYS);
 
@@ -371,7 +408,8 @@ public class MainFrame extends Application {
         graficar.setStyle(ESTILO_BOTON + " -fx-font-weight: bold;");
         botonGraficar = graficar;
         graficar.setDisable(true);   // se habilita solo despues de calcular con Enter
-        for (TextField tf : new TextField[]{campo, campoQ, campoX0, campoEps, campoIter, campoR0, campoS0, campoPuntos})
+        for (TextField tf : new TextField[]{campo, campoQ, campoPuntoEvaluacion,
+                campoX0, campoEps, campoIter, campoR0, campoS0, campoPuntos})
             tf.textProperty().addListener((o, a, b) -> graficar.setDisable(true));
         metodo.valueProperty().addListener((o, a, b) -> graficar.setDisable(true));
         metodoCota.valueProperty().addListener((o, a, b) -> graficar.setDisable(true));
@@ -397,9 +435,15 @@ public class MainFrame extends Application {
         metodo.valueProperty().addListener((o, a, b) -> {
             if (M_STURM.equals(b)) metodoCota.setValue("Newton");  
             actualizarModo();
+            actualizarCasosDePrueba();
             error.setText("");
             panelResultado.getChildren().clear();
         });
+        casosDePrueba.setOnAction(e -> {
+            Caso caso = casosDePrueba.getValue();
+            if (caso != null) cargarCasoDePrueba(caso);
+        });
+        actualizarCasosDePrueba();
         actualizarModo();
 
         VBox raiz = new VBox(barra, zonaTitulo, contenido);
@@ -415,6 +459,37 @@ public class MainFrame extends Application {
 
     private boolean esNewton() {
         return M_NEWTON.equals(metodo.getValue());
+    }
+
+    private boolean esEvaluar() {
+        return M_EVALUAR.equals(metodo.getValue());
+    }
+
+    private void actualizarCasosDePrueba() {
+        casosDePrueba.getItems().setAll(CasosDePrueba.paraOperacion(metodo.getValue()));
+        casosDePrueba.getSelectionModel().clearSelection();
+    }
+
+    private void cargarCasoDePrueba(Caso caso) {
+        campo.setText(caso.polinomio());
+        if (caso.puntoEvaluacion() != null) campoPuntoEvaluacion.setText(caso.puntoEvaluacion());
+        if (caso.divisor() != null) campoQ.setText(caso.divisor());
+        if (caso.x0() != null) campoX0.setText(caso.x0());
+        if (caso.r0() != null) campoR0.setText(caso.r0());
+        if (caso.s0() != null) campoS0.setText(caso.s0());
+        if (caso.epsilon() != null) campoEps.setText(caso.epsilon());
+        if (caso.iteraciones() != null) campoIter.setText(caso.iteraciones());
+        if (caso.metodoCota() != null) metodoCota.setValue(caso.metodoCota());
+        if (caso.puntosSturm() != null) {
+            campoPuntos.setText(caso.puntosSturm());
+            campoPuntos.setDisable(false);
+        } else {
+            campoPuntos.clear();
+            campoPuntos.setDisable(true);
+        }
+        error.setText("");
+        panelResultado.getChildren().clear();
+        botonGraficar.setDisable(true);
     }
 
     private boolean esRaices() {
@@ -442,15 +517,28 @@ public class MainFrame extends Application {
         return esNewton() || esHalley();
     }
 
+    private boolean esDivision() {
+        return M_DIVISION.equals(metodo.getValue());
+    }
+
     /** Muestra Q(x) para Horner/Ruffini o los parametros para Newton. */
     private void actualizarModo() {
-        boolean horner = M_HORNER.equals(metodo.getValue());
+        boolean horner = esDivision();
         boolean iterativo = esIterativo();
+        boolean evaluar = esEvaluar();
+        boolean bairstow = esBairstow();
+        boolean tieneParametros = evaluar || iterativo || bairstow;
+        filaParametros.setVisible(tieneParametros);
+        filaParametros.setManaged(tieneParametros);
+        grupoPuntoEvaluacion.setVisible(evaluar);
+        grupoPuntoEvaluacion.setManaged(evaluar);
+        botonPrevisualizarX0.setVisible(iterativo);
+        botonPrevisualizarX0.setManaged(iterativo);
+        botonPrevisualizarX0.setDisable(!iterativo || campo.getText().trim().isEmpty());
         etiquetaQ.setVisible(horner);
         etiquetaQ.setManaged(horner);
         campoQ.setVisible(horner);
         campoQ.setManaged(horner);
-        boolean bairstow = esBairstow();
         parametrosNewton.setVisible(iterativo || bairstow);
         parametrosNewton.setManaged(iterativo || bairstow);
         grupoX0.setVisible(iterativo);
@@ -544,7 +632,18 @@ public class MainFrame extends Application {
                 throw new IllegalArgumentException("Falta P(x): escribí un polinomio.");
             Polinomio p = parsear(texto, "P(x)"); // valida P(x)
 
-            if (esIterativo()) {
+            if (esEvaluar()) {
+                String textoPunto = campoPuntoEvaluacion.getText().trim();
+                if (textoPunto.isEmpty())
+                    throw new IllegalArgumentException("Falta el punto x: escribí el valor donde evaluar P(x).");
+                double x = parsearNumero(textoPunto, "x");
+                double resultado = p.evaluar(x);
+                String valorX = Double.toString(x);
+                panelResultado.getChildren().add(textoMono("P(x) = " + texto(p)));
+                panelResultado.getChildren().add(textoMono("x = " + valorX));
+                panelResultado.getChildren().add(negrita(
+                        "P(" + valorX + ") = " + Double.toString(resultado)));
+            } else if (esIterativo()) {
                 metodoIterativo(p, esHalley());
             } else if (esRaices()) {
                 raicesPolinomio(p);
@@ -577,6 +676,28 @@ public class MainFrame extends Application {
     // Grafico (boton "Graficar"): abre una ventana nueva segun el metodo elegido
     // ------------------------------------------------------------------
 
+    private void previsualizarParaX0() {
+        try {
+            String textoP = campo.getText().trim();
+            if (textoP.isEmpty())
+                throw new IllegalArgumentException("Falta P(x): escribí un polinomio.");
+            Polinomio p = parsear(textoP, "P(x)");
+            GraficoPolinomio grafico = new GraficoPolinomio(p,
+                    "Previsualización: P(x) = " + texto(p));
+            grafico.ajustarRango(-10, 10);
+
+            Stage ventana = new Stage();
+            ventana.setTitle("Graficar para elegir x₀");
+            ventana.setScene(new Scene(grafico, 900, 600));
+            ventana.show();
+            ventana.toFront();
+            ventana.requestFocus();
+        } catch (RuntimeException ex) {
+            String mensaje = ex.getMessage() != null ? ex.getMessage() : ex.toString();
+            error.setText("Error al previsualizar: " + mensaje);
+        }
+    }
+
     private void graficar() {
         error.setText("");
         try {
@@ -584,10 +705,18 @@ public class MainFrame extends Application {
             if (textoP.isEmpty())
                 throw new IllegalArgumentException("Falta P(x): escribí un polinomio.");
             Polinomio p = parsear(textoP, "P(x)");
+            Polinomio q = null;
+            if (esDivision()) {
+                String textoQ = campoQ.getText().trim();
+                if (textoQ.isEmpty())
+                    throw new IllegalArgumentException("Falta Q(x): escribí el divisor.");
+                q = parsear(textoQ, "Q(x)");
+            }
             if (esConstante(p))
                 throw new ArithmeticException("P(x) es constante: no hay nada que graficar");
 
-            GraficoPolinomio g = new GraficoPolinomio(p, "P(x) = " + texto(p));
+            GraficoPolinomio g = new GraficoPolinomio(p,
+                    q == null ? "P(x) = " + texto(p) : "P(x) (azul) y Q(x) (rojo)", q);
 
             if (esIterativo()) {
                 // Newton / Halley: marca la raiz que encuentra RaicesSolver
@@ -693,7 +822,8 @@ public class MainFrame extends Application {
             }
             // Horner / Ruffini: solo la curva
 
-            g.ajustarRango();
+            if (esDivision()) g.ajustarRango(-10, 10);
+            else g.ajustarRango();
             Stage ventana = new Stage();
             ventana.setTitle("Gráfico – " + metodo.getValue());
             ventana.setScene(new Scene(g, 900, 600));
@@ -1117,7 +1247,7 @@ public class MainFrame extends Application {
                         break;
                     }
                     motivoCorte = "El denominador de Halley ≈ 0 en x = " + formatoNewton(xi)
-                            + ": el método no puede continuar. Probá con otro x0.";
+                            + ": el método no puede continuar. Probá con otro x0 o revise la función.";
                     break;
                 }
                 siguiente = xi - (2.0 * valor * deriv) / den;
@@ -1128,7 +1258,7 @@ public class MainFrame extends Application {
                         break;
                     }
                     motivoCorte = "P'(x) ≈ 0 en x = " + formatoNewton(xi)
-                            + ": el método no puede continuar. Probá con otro x0.";
+                            + ": el método no puede continuar. Probá con otro x0 o revise la función.";
                     break;
                 }
                 siguiente = xi - valor / deriv;
@@ -1149,7 +1279,7 @@ public class MainFrame extends Application {
             panelResultado.getChildren().add(textoMono(motivoCorte));
         } else {
             panelResultado.getChildren().add(textoMono(
-                    "No convergió en " + maxIter + " iteraciones. Probá con otro x0 o más iteraciones."));
+                    "No convergió en " + maxIter + " iteraciones. Probá con otro x0, más iteraciones o revisá la función."));
         }
     }
 
