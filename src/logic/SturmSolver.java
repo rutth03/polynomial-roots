@@ -70,9 +70,9 @@ public class SturmSolver{
             if(sturm.get(i).getGrado() == 0)
                 break;
         }
-	if(sucesionOriginal.isEmpty()){
-		sucesionOriginal = new ArrayList<>(sturm);
-	}
+        if(sucesionOriginal.isEmpty()){
+            sucesionOriginal = new ArrayList<>(sturm);
+        }
         return sturm;
     }
 
@@ -337,6 +337,6 @@ public class SturmSolver{
     }
 
 	public static double puntoMedio(Polinomio p, double a, double b) {
-    return a + (b - a) / 2.0;
-}
+        return a + (b - a) / 2.0;
+    }
 }
