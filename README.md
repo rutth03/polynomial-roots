@@ -1,6 +1,6 @@
 # Proyecto: Raíces de Polinomios
 
-> **Estado del Proyecto:** 🛠️ *En Desarrollo (In Progress)*
+> **Estado del Proyecto:** 🛠️ *FINALIZADO*
 
 Aplicación interactiva para el análisis de polinomios y localización de raíces desarrollada para la asignatura **Programación Numérica** (Tecnicatura Universitaria en Programación / Licenciatura en Analisis de Sistemas - Universidad Nacional de Salta).
 
@@ -71,13 +71,19 @@ En la aplicación, selecciona una operación y luego un elemento de **Casos de p
 ## Estructura del Proyecto
 ```
 src/
- ├── gui/                  
+ ├── gui/
+ |    ├── GraficoPolinomio.java
+ |    ├── MainFrame.java
+ |    └── MainFrameLauncher.java              
  ├── logic/
- │    ├── OperacionesPolinomios.java   <-- Solo álgebra básica (Evaluar, derivar, divisiones: Horner, Cuadrática, General)
- │    ├── RaicesSolver.java          <-- Métodos iterativos de aproximación (Newton, Halley)
- │    ├── SturmSolver.java           <-- Sucesión de Sturm y separación de raíces (ítems h, i)
- │    ├── BairstowSolver.java        <-- Método de Bairstow para raíces complejas/cuadráticas
- │    └── AnalisisPolinomio.java     <-- Criterio de Gauss (raíces enteras/racionales) y Cotas (Lagrange, Laguerre y Newton)
+ |    ├── CasosDePrueba.java
+ |    ├── Parser.java 
+ │    ├── OperacionesPolinomios.java 
+ │    ├── RaicesSolver.java          
+ │    ├── SturmSolver.java           
+ │    ├── BairstowSolver.java       
+ │    ├── CotasDePolinomio.java      
+ │    └── AnalisisPolinomio.java     
  ├── model/
  │    ├── Polinomio.java
  │    └── RaizResult.java
