@@ -866,44 +866,6 @@ public class MainFrame extends Application {
         }
     }
 
-    /** Mismo bucle que la tabla de metodoIterativo; devuelve la raiz o NaN si no converge. */
-   /* private static double aproximarRaiz(Polinomio p, double x0, double eps, int maxIter, boolean halley) {
-        Polinomio segunda = p.derivar().derivar();
-        double xi = x0;
-        double anterior = x0;
-        for (int i = 0; i <= maxIter; i++) {
-            if (!Double.isFinite(xi)) return Double.NaN;
-            ResultadoHornerDoble r = OperacionesPolinomios.hornerDoble(p, xi);
-            double valor = r.getValor();
-            double deriv = r.getDerivada();
-
-            if (i > 0 && Math.abs(xi - anterior) < eps && Math.abs(valor) < eps) return xi;
-            if (Math.abs(valor) == 0) return xi;
-            if (i == maxIter) return Double.NaN;
-
-            double siguiente;
-            if (halley) {
-                double den = 2.0 * deriv * deriv - valor * segunda.evaluar(xi);
-                if (Math.abs(den) < 1e-24) {
-                    if (Math.abs(valor) < eps || Math.abs(xi - anterior) < eps) {
-                        return xi;
-                    }
-                    return Double.NaN;
-                }
-                siguiente = xi - (2.0 * valor * deriv) / den;
-            } else {
-                if (Math.abs(deriv) < 1e-14) {
-                    if (Math.abs(valor) < eps) return xi;
-                    return Double.NaN;
-                }
-                siguiente = xi - valor / deriv;
-            }
-            anterior = xi;
-            xi = siguiente;
-        }
-        return Double.NaN;
-    }*/
-
     /** Texto -> model.Polinomio. Parser se usa solo como parser (y ya devuelve el polinomio normalizado). */
     private Polinomio parsear(String texto, String nombre) {
         try {
@@ -1180,9 +1142,6 @@ public class MainFrame extends Application {
      * Con epsilon infinito y maxIter = 1, RaicesSolver corta despues de la primera iteracion.
      * Lanza excepcion si el metodo no puede seguir (derivada ~ 0, NaN o infinito).
      */
-    /*private static double siguienteX(Polinomio p, double xi, boolean halley) {
-        return resolver(p, xi, Double.POSITIVE_INFINITY, 1, halley).getValorRaiz();
-    }
 
     /**
      * Metodos iterativos Newton y Halley. Arma la tabla:
