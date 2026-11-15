@@ -114,7 +114,17 @@ public class GraficoPolinomio extends Pane {
     // ---------------- API ----------------
 
     public void agregarPunto(double x, String texto, Color color) {
-        if (Double.isFinite(x)) puntos.add(new Punto(x, texto, color));
+        if (!Double.isFinite(x)) return;
+        for (Punto punto : puntos) {
+            if (Math.abs(punto.x - x) < 1e-10 && punto.texto.equals(texto)) return;
+        }
+        puntos.add(new Punto(x, texto, color));
+    }
+
+    public static Color colorPorAbscisa(double x) {
+        if (x < 0) return ROJO;
+        if (x > 0) return VERDE;
+        return NARANJA;
     }
 
     public void agregarBanda(double desde, double hasta, Color color) {
@@ -339,28 +349,26 @@ public class GraficoPolinomio extends Pane {
         // puntos con su etiqueta "(x, 0)"
         List<Punto> orden = new ArrayList<>(puntos);
         orden.sort(Comparator.comparingDouble(q -> q.x));
-        double Y0 = py(0);
-        int idx = 0;
+        List<double[]> etiquetasOcupadas = new ArrayList<>();
         for (Punto q : orden) {
             if (q.x < xMin || q.x > xMax) continue;
             double X = px(q.x);
+            double Y = py(0);
             g.setFill(q.color);
-            g.fillOval(X - 5, Y0 - 5, 10, 10);
+            g.fillOval(X - 5, Y - 5, 10, 10);
             g.setStroke(Color.WHITE);
             g.setLineWidth(1.5);
-            g.strokeOval(X - 5, Y0 - 5, 10, 10);
+            g.strokeOval(X - 5, Y - 5, 10, 10);
 
-            int nivel = idx % 3;                       // escalona las etiquetas para que no se pisen
-            double ly = Y0 - 12 - nivel * 17;
-            if (ly < M + 12) ly = Y0 + 20 + nivel * 17;
             double ancho = q.texto.length() * 7.3 + 6;
             double lx = Math.max(M + ancho / 2, Math.min(M + pw - ancho / 2, X));
+            double ly = ubicarEtiqueta(Y, lx, ancho, etiquetasOcupadas);
+            etiquetasOcupadas.add(new double[]{lx - ancho / 2, ly - 12, lx + ancho / 2, ly + 4});
             g.setFill(Color.rgb(255, 255, 255, 0.85));
             g.fillRect(lx - ancho / 2, ly - 12, ancho, 16);
             g.setFill(q.color);
             g.setTextAlign(TextAlignment.CENTER);
             g.fillText(q.texto, lx, ly);
-            idx++;
         }
 
         // titulo, nota y ayuda
@@ -375,6 +383,27 @@ public class GraficoPolinomio extends Pane {
         }
         g.setFill(Color.GRAY);
         g.fillText("Rueda: zoom   \u00b7   Arrastrar: mover   \u00b7   Doble clic: restablecer", M, h - 8);
+    }
+
+    private double ubicarEtiqueta(double y, double x, double ancho, List<double[]> ocupadas) {
+        for (int nivel = 0; nivel < 24; nivel++) {
+            double arriba = y - 13 - nivel * 16;
+            if (etiquetaLibre(x, ancho, arriba, ocupadas)) return arriba;
+            double abajo = y + 21 + nivel * 16;
+            if (etiquetaLibre(x, ancho, abajo, ocupadas)) return abajo;
+        }
+        return Math.max(M + 13, Math.min(M + ph - 4, y - 13));
+    }
+
+    private boolean etiquetaLibre(double x, double ancho, double baseline, List<double[]> ocupadas) {
+        double izquierda = x - ancho / 2, derecha = x + ancho / 2;
+        double arriba = baseline - 12, abajo = baseline + 4;
+        if (arriba < M || abajo > M + ph) return false;
+        for (double[] caja : ocupadas) {
+            if (izquierda < caja[2] && derecha > caja[0]
+                    && arriba < caja[3] && abajo > caja[1]) return false;
+        }
+        return true;
     }
 
     private void dibujarCurva(GraphicsContext g, Polinomio polinomio, Color color) {

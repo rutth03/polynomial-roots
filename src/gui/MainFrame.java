@@ -17,6 +17,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
@@ -99,7 +100,7 @@ public class MainFrame extends Application {
     private TextField campoPuntos;  //  - Sturm: puntos alfa (opcional)
     private HBox grupoSturm;        //  fila con el campo de puntos de Sturm
     private Button botonIntervalo;  //  Sturm: "Calcular cotas"
-    private Label etiquetaIntervalo; // Sturm: muestra el intervalo valido al lado del boton
+    private Label etiquetaIntervalo; // Sturm: muestra las cotas antes de los puntos alfa
     //intervalo manual para sturm
     private TextField campoA;
     private TextField campoB;
@@ -174,7 +175,7 @@ public class MainFrame extends Application {
         metodo = new ComboBox<>();
         metodo.getItems().addAll(M_EVALUAR, M_DIVISION, M_NEWTON, M_HALLEY,
                 M_BAIRSTOW, M_RAICES, M_COTAS, M_STURM);
-        metodo.setValue(M_DIVISION);
+        metodo.setValue(M_EVALUAR);
         metodo.setStyle("-fx-font-size: 16px;");
         Label etiquetaCasos = new Label("Casos de prueba:");
         etiquetaCasos.setStyle("-fx-font-size: 18px;");
@@ -191,9 +192,11 @@ public class MainFrame extends Application {
         botonIntervalo = boton("Calcular cotas", this::verIntervalo);
         botonIntervalo.setMinWidth(140);
         etiquetaIntervalo = new Label();
+        etiquetaIntervalo.setWrapText(true);
+        etiquetaIntervalo.setMaxWidth(Double.MAX_VALUE);
         etiquetaIntervalo.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + COLOR_ENCABEZADO + ";");
         HBox filaMetodo = new HBox(10, etiquetaMetodo, metodo, etiquetaCasos, casosDePrueba,
-                etiquetaCota, metodoCota, botonIntervalo, etiquetaIntervalo);
+                etiquetaCota, metodoCota, botonIntervalo);
         filaMetodo.setAlignment(Pos.CENTER_LEFT);
 
         // ---------- Entradas: P(x) y Q(x) ----------
@@ -295,8 +298,8 @@ public class MainFrame extends Application {
         // Bloque del intervalo manual
         VBox bloqueIntervalo = new VBox(6, grupoIntervaloManual, etiquetaResultadoIntervalo);
 
-        // Bloque general de Sturm: puntos alfa arriba e intervalo manual abajo
-        bloqueSturm = new VBox(10, grupoSturm, bloqueIntervalo);
+        // En Sturm, las cotas se muestran en una fila propia antes de los puntos alfa.
+        bloqueSturm = new VBox(10, etiquetaIntervalo, grupoSturm, bloqueIntervalo);
         bloqueSturm.setAlignment(Pos.CENTER_LEFT);
         grupoIntervaloManual.setStyle("-fx-font-size: 14px;");
         etiquetaResultadoIntervalo.setStyle("-fx-font-size: 14px;");
@@ -346,42 +349,42 @@ public class MainFrame extends Application {
         formulario.add(etiquetaQ, 0, 1);
         formulario.add(campoQ, 1, 1);
         formulario.add(filaParametros, 0, 2, 2, 1);
-        formulario.add(grupoSturm, 0, 3, 2, 1);   
+        formulario.add(bloqueSturm, 0, 3, 2, 1);
         GridPane.setHgrow(campo, Priority.ALWAYS);
         GridPane.setHgrow(campoQ, Priority.ALWAYS);
 
         // ---------- Botones ----------
         GridPane teclado = new GridPane();
-        teclado.setHgap(6);
-        teclado.setVgap(6);
-        teclado.setPadding(new Insets(8));
+        teclado.setHgap(4);
+        teclado.setVgap(4);
+        teclado.setPadding(new Insets(6));
         teclado.setStyle("-fx-background-color: " + COLOR_CAMPOS + "; -fx-background-radius: 8;");
 
         // Fila 1: sen cos tg pi  x ^ ( )  Borrar
-        teclado.add(boton("sen()", () -> insertarFuncion("sen")), 0, 0);
-        teclado.add(boton("cos()", () -> insertarFuncion("cos")), 1, 0);
-        teclado.add(boton("tg()", () -> insertarFuncion("tg")), 2, 0);
-        teclado.add(boton("π", () -> insertar("π")), 3, 0);
-        teclado.add(boton("x", () -> insertar("x")), 4, 0);
-        teclado.add(boton("^", () -> insertar("^")), 5, 0);
-        teclado.add(boton("(", () -> insertar("(")), 6, 0);
-        teclado.add(boton(")", () -> insertar(")")), 7, 0);
-        Button borrar = boton("Borrar", () -> {
+        teclado.add(botonTeclado("sen()", () -> insertarFuncion("sen")), 0, 0);
+        teclado.add(botonTeclado("cos()", () -> insertarFuncion("cos")), 1, 0);
+        teclado.add(botonTeclado("tg()", () -> insertarFuncion("tg")), 2, 0);
+        teclado.add(botonTeclado("π", () -> insertar("π")), 3, 0);
+        teclado.add(botonTeclado("x", () -> insertar("x")), 4, 0);
+        teclado.add(botonTeclado("^", () -> insertar("^")), 5, 0);
+        teclado.add(botonTeclado("(", () -> insertar("(")), 6, 0);
+        teclado.add(botonTeclado(")", () -> insertar(")")), 7, 0);
+        Button borrar = botonTeclado("Borrar", () -> {
             activo.clear();
             activo.requestFocus();
         });
         teclado.add(borrar, 8, 0);
 
         // Fila 2: ln log raiz e  + - * /  punto
-        teclado.add(boton("ln()", () -> insertarFuncion("ln")), 0, 1);
-        teclado.add(boton("log()", () -> insertarFuncion("log")), 1, 1);
-        teclado.add(boton("raiz()", () -> insertarFuncion("raiz")), 2, 1);
-        teclado.add(boton("e", () -> insertar("e")), 3, 1);
-        teclado.add(boton("+", () -> insertar("+")), 4, 1);
-        teclado.add(boton("-", () -> insertar("-")), 5, 1);
-        teclado.add(boton("*", () -> insertar("*")), 6, 1);
-        teclado.add(boton("/", () -> insertar("/")), 7, 1);
-        teclado.add(boton(".", () -> insertar(".")), 8, 1);
+        teclado.add(botonTeclado("ln()", () -> insertarFuncion("ln")), 0, 1);
+        teclado.add(botonTeclado("log()", () -> insertarFuncion("log")), 1, 1);
+        teclado.add(botonTeclado("raiz()", () -> insertarFuncion("raiz")), 2, 1);
+        teclado.add(botonTeclado("e", () -> insertar("e")), 3, 1);
+        teclado.add(botonTeclado("+", () -> insertar("+")), 4, 1);
+        teclado.add(botonTeclado("-", () -> insertar("-")), 5, 1);
+        teclado.add(botonTeclado("*", () -> insertar("*")), 6, 1);
+        teclado.add(botonTeclado("/", () -> insertar("/")), 7, 1);
+        teclado.add(botonTeclado(".", () -> insertar(".")), 8, 1);
 
         // ---------- Error ----------
         error = new Label();
@@ -604,6 +607,12 @@ public class MainFrame extends Application {
         return b;
     }
 
+    private Button botonTeclado(String texto, Runnable accion) {
+        Button b = boton(texto, accion);
+        b.setPadding(new Insets(4, 8, 4, 8));
+        return b;
+    }
+
     /** Inserta texto en la posicion del cursor del campo activo. */
     private void insertar(String texto) {
         activo.insertText(activo.getCaretPosition(), texto);
@@ -812,13 +821,32 @@ public class MainFrame extends Application {
                 }
             }
             if (esSturm()) {   
-                for (double[] iv : sturmIntervalos)
-                    g.agregarBanda(iv[0], iv[1], GraficoPolinomio.VERDE);
-                for (double r : sturmRaicesExactas)   // raices exactas encontradas: punto rojo
-                    g.agregarPunto(r, "(" + fraccionTexto(r) + ", 0)", GraficoPolinomio.ROJO);
-                g.setNota("Cotas: " + sturmTextoCotas + "     "
-                        + (sturmIntervalos.isEmpty() ? "No hay raíces reales en los puntos elegidos."
-                           : "Verde: en cada intervalo hay una raíz."));
+                for (double[] iv : sturmIntervalos) {
+                    double medio = iv[0] + (iv[1] - iv[0]) / 2;
+                    Color color = GraficoPolinomio.colorPorAbscisa(medio);
+                    g.agregarBanda(iv[0], iv[1], color);
+                    g.agregarPunto(iv[0], "(" + GraficoPolinomio.num(iv[0]) + ", 0)",
+                            GraficoPolinomio.colorPorAbscisa(iv[0]));
+                    g.agregarPunto(iv[1], "(" + GraficoPolinomio.num(iv[1]) + ", 0)",
+                            GraficoPolinomio.colorPorAbscisa(iv[1]));
+                }
+                for (double r : sturmRaicesExactas) {
+                    boolean yaMarcadaComoExtremo = false;
+                    for (double[] iv : sturmIntervalos) {
+                        if (Math.abs(r - iv[0]) < 1e-10 || Math.abs(r - iv[1]) < 1e-10) {
+                            yaMarcadaComoExtremo = true;
+                            break;
+                        }
+                    }
+                    if (!yaMarcadaComoExtremo) {
+                        g.agregarPunto(r, "(" + fraccionTexto(r) + ", 0)",
+                                GraficoPolinomio.colorPorAbscisa(r));
+                    }
+                }
+                g.setNota("Intervalos de una raíz: rojo x<0, verde x>0."
+                        + (sturmIntervalos.isEmpty()
+                           ? " No hay subintervalos con una raíz en los puntos elegidos."
+                           : ""));
             }
             // Horner / Ruffini: solo la curva
 
@@ -839,7 +867,7 @@ public class MainFrame extends Application {
     }
 
     /** Mismo bucle que la tabla de metodoIterativo; devuelve la raiz o NaN si no converge. */
-    private static double aproximarRaiz(Polinomio p, double x0, double eps, int maxIter, boolean halley) {
+   /* private static double aproximarRaiz(Polinomio p, double x0, double eps, int maxIter, boolean halley) {
         Polinomio segunda = p.derivar().derivar();
         double xi = x0;
         double anterior = x0;
@@ -874,7 +902,7 @@ public class MainFrame extends Application {
             xi = siguiente;
         }
         return Double.NaN;
-    }
+    }*/
 
     /** Texto -> model.Polinomio. Parser se usa solo como parser (y ya devuelve el polinomio normalizado). */
     private Polinomio parsear(String texto, String nombre) {
@@ -970,6 +998,13 @@ public class MainFrame extends Application {
             for (double[] prueba : pruebasEnteras)   //pruebas guardadas por AnalisisPolinomio
                 evaluaciones.getChildren().add(celdaPrueba(formato(prueba[0]), prueba[1] == 1));
             panelResultado.getChildren().add(evaluaciones);
+        }
+
+        if (!enteras.isEmpty()) {
+            List<String> encontradasEnteras = new ArrayList<>();
+            for (int raiz : enteras) encontradasEnteras.add(String.valueOf(raiz));
+            panelResultado.getChildren().add(
+                    textoMono("Raíces enteras: " + String.join(", ", encontradasEnteras)));
         }
 
         //factorizado con OperacionesPolinomios.dividirHorner (antes horner con BigInteger)
@@ -1145,7 +1180,7 @@ public class MainFrame extends Application {
      * Con epsilon infinito y maxIter = 1, RaicesSolver corta despues de la primera iteracion.
      * Lanza excepcion si el metodo no puede seguir (derivada ~ 0, NaN o infinito).
      */
-    private static double siguienteX(Polinomio p, double xi, boolean halley) {
+    /*private static double siguienteX(Polinomio p, double xi, boolean halley) {
         return resolver(p, xi, Double.POSITIVE_INFINITY, 1, halley).getValorRaiz();
     }
 
@@ -1271,7 +1306,7 @@ public class MainFrame extends Application {
 
         // --- Conclusion: el resultado final lo da RaicesSolver ---
         if (convergio) {
-            RaizResult rr = resolver(p, x0, epsilon, maxIter, halley);
+            //RaizResult rr = resolver(p, x0, epsilon, maxIter, halley);
             panelResultado.getChildren().add(textoMono(
                     "Raíz aproximada: x ≈ " + formatoNewton(xi)
                     + "   (" + (fila - 2) + " iteraciones)"));
@@ -1630,14 +1665,10 @@ public class MainFrame extends Application {
 
     // ==================== INICIO: Sturm =====================
 
-    /** intervalos con raiz del ultimo calculo de Sturm (para el grafico): {a, b} */
+    /** Subintervalos con |N(a) - N(b)| = 1 del ultimo calculo de Sturm: {a, b}. */
     private List<double[]> sturmIntervalos = new ArrayList<>();
-    /** raices exactas encontradas en los puntos del ultimo calculo de Sturm (en rojo en el grafico) */
+    /** Raíces exactas encontradas en los puntos del último cálculo de Sturm. */
     private List<Double> sturmRaicesExactas = new ArrayList<>();
-    /** texto de las cotas del ultimo calculo de Sturm (para el grafico) */
-    private String sturmTextoCotas = "";
-    /** cotas usadas en el ultimo calculo de Sturm (para el grafico) */
-    private List<Double> sturmCotas = new ArrayList<>();
 
     /**
      * Sucesion de Sturm (SturmSolver) y tabla de signos.
@@ -1671,7 +1702,8 @@ public class MainFrame extends Application {
 
         // ---- 2) Puntos alfa ----
         List<Double> puntos = new ArrayList<>();
-        sturmCotas = new ArrayList<>();
+        sturmIntervalos = new ArrayList<>();
+        sturmRaicesExactas = new ArrayList<>();
         // primero SIEMPRE las cotas: los puntos de la tabla salen de ahi
         String nombre = metodoCota.getValue();
          int num = numeroMetodoCota(nombre); ;   // 1 = Lagrange, 2 = Laguerre, 3 = Newton
@@ -1685,12 +1717,7 @@ public class MainFrame extends Application {
         String txtNeg = infNeg == 0 ? "sin raíces negativas"
                 : fraccionTexto(infNeg) + " < raíces negativas < " + fraccionTexto(supNeg);
         panelResultado.getChildren().add(textoMono("Cotas (" + nombre + "):  " + txtPos + "     " + txtNeg));
-        sturmTextoCotas = txtNeg + "     " + txtPos;   // para el texto del grafico
-        if (infNeg != 0) { sturmCotas.add(infNeg); sturmCotas.add(supNeg); }
-        if (supPos != 0) { sturmCotas.add(infPos); sturmCotas.add(supPos); }
-
         // dos intervalos: negativas [infNeg, supNeg] y positivas [infPos, supPos]
-        sturmIntervalos = new ArrayList<>();
         List<double[]> tramos = tramosCotas(infNeg, supNeg, infPos, supPos);
         if (tramos.isEmpty()) {
             panelResultado.getChildren().add(negrita("Seg\u00fan las cotas no hay ra\u00edces reales (salvo quiz\u00e1 x = 0)."));
@@ -1750,7 +1777,7 @@ public class MainFrame extends Application {
             if (esRaiz[j]) sturmRaicesExactas.add(usados.get(j));
         }
         boolean ceroEsRaiz = Math.abs(p.evaluar(0)) < 1e-12;
-        if (ceroEsRaiz && !sturmRaicesExactas.contains(0.0)) sturmRaicesExactas.add(0.0);
+        if (ceroEsRaiz && !sturmRaicesExactas.contains(0.0))         sturmRaicesExactas.add(0.0);
         sturmRaicesExactas.sort(Double::compare);   
 
         // ---- 3) Tabla de signos y N(alfa) ----
@@ -1798,12 +1825,13 @@ public class MainFrame extends Application {
         int enIntervalos = 0;
         for (int j = 0; j + 1 < usados.size(); j++) {
             double ia = usados.get(j), ib = usados.get(j + 1);
-            int d = Math.abs(n[j] - n[j + 1]);
+            int diferenciaSturm = Math.abs(n[j] - n[j + 1]);
+            int d = diferenciaSturm;
             if (esRaiz[j + 1]) d--;                                   // la raiz exacta b ya se conoce
             if (ceroEsRaiz && ia < 0 && ib > 0) d--;                  // el 0 ya se conoce
+            if (diferenciaSturm == 1) sturmIntervalos.add(new double[]{ia, ib});
             if (d <= 0) continue;
             enIntervalos += d;
-            sturmIntervalos.add(new double[]{ia, ib});
             textoIntervalos.add("(" + fraccionTexto(ia) + ", " + fraccionTexto(ib) + ")");
             String txt = "|N(" + fraccionTexto(ia) + ") - N(" + fraccionTexto(ib) + ")| = " + Math.abs(n[j] - n[j + 1])
                     + "   → hay " + d + (d == 1 ? " raíz" : " raíces") + " entre " + fraccionTexto(ia) + " y " + fraccionTexto(ib)
