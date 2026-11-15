@@ -44,7 +44,7 @@ public final class CasosDePrueba {
 
             casoSimple(RAICES, "Raíces enteras", "x^3 - x"),
             casoSimple(RAICES, "Raíces racionales", "6x^2 + x - 2"),
-            casoSimple(RAICES, "Raíces enteras y racionales", "6x^5 - 493x^4 - 12913x^3 + 221030x^2 + 39600x - 1260000"),
+            casoSimple(RAICES, "Raíces enteras y racionales", "15x^4 - 62x^3 - 68 x^2 + 14x + 5"),
 
             casoSimple(COTAS, "P(x) = x^2 - 4", "x^3 - 3x^2 - 6x + 8"),
             casoSimple(COTAS, "P(x) = x^3 - 6x^2 + 11x - 6", "x^3 - 6x^2 + 11x - 6"),
