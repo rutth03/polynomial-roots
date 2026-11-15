@@ -172,4 +172,72 @@ public class OperacionesPolinomios {
             coef[i] *= escalar;
         return new Polinomio(coef);
     }
+
+
+    public static ResultadoDivisionGeneral divisionGeneral2(Polinomio pDividendo, Polinomio pDivisor) {
+
+        double[] A = pDividendo.getCoeficientes();
+        double[] B = pDivisor.getCoeficientes();
+
+        int n = pDividendo.getGrado();
+        int m = pDivisor.getGrado();
+
+        if (Math.abs(B[0]) < 1e-14) {
+            throw new ArithmeticException("El divisor tiene coeficiente principal cero.");
+        }
+
+        if (n < m) {
+            return new ResultadoDivisionGeneral(new Polinomio(new double[]{0.0}), pDividendo);
+    }
+
+        double[] R = A.clone();
+        double[] C = new double[n - m + 1];
+
+        for (int i = 0; i <= n - m; i++) {
+
+            C[i] = R[i] / B[0];
+
+            for (int j = 0; j <= m; j++) {
+                R[i + j] -= C[i] * B[j];
+            }
+        }
+
+        // Extraemos el resto
+        double[] restoCoefs;
+
+        if (m == 0) {
+            restoCoefs = new double[]{0.0};
+        } else {
+            restoCoefs = new double[m];
+            System.arraycopy(R, n - m + 1, restoCoefs, 0, m);
+        }
+
+        // Tolerancia relativa para eliminar residuos numericos
+        double escala = 0.0;
+
+        for (double coef : A) {
+            escala = Math.max(escala, Math.abs(coef));
+        }
+
+        double tolerancia = escala * 1e-12;
+
+        for (int i = 0; i < restoCoefs.length; i++) {
+            if (Math.abs(restoCoefs[i]) <= tolerancia) {
+                restoCoefs[i] = 0.0;
+            }
+        }
+
+        // Eliminamos ceros iniciales del resto
+        int primero = 0;
+
+        while (primero < restoCoefs.length - 1 && restoCoefs[primero] == 0.0) {
+            primero++;
+        }
+
+        double[] restoFinal = new double[restoCoefs.length - primero];
+
+        System.arraycopy(restoCoefs, primero, restoFinal, 0, restoFinal.length);
+
+        return new ResultadoDivisionGeneral(new Polinomio(C), new Polinomio(restoFinal));
+    }
 }

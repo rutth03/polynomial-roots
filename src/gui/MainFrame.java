@@ -92,6 +92,14 @@ public class MainFrame extends Application {
     private HBox grupoSturm;        //  fila con el campo de puntos de Sturm
     private Button botonIntervalo;  //  Sturm: "Calcular cotas"
     private Label etiquetaIntervalo; // Sturm: muestra el intervalo valido al lado del boton
+    //intervalo manual para sturm
+    private TextField campoA;
+    private TextField campoB;
+    private Button botonCalcularIntervalo;
+    private Label etiquetaResultadoIntervalo;
+    private HBox grupoIntervaloManual;
+    private VBox bloqueSturm;
+
     private TextField activo;       // campo donde escriben los botones
     private VBox panelResultado;    // contenido del resultado
     private Label error;
@@ -237,6 +245,28 @@ public class MainFrame extends Application {
         HBox.setHgrow(campoPuntos, Priority.ALWAYS);
         parametrosNewton.setAlignment(Pos.CENTER_LEFT);
 
+        //campos para ingresar el intervalo manual [a,b]
+        campoA = new TextField();
+        campoA.setPromptText("Valor de a");
+        campoA.setPrefWidth(75);
+        campoB = new TextField();
+        campoB.setPromptText("Valor de b");
+        campoB.setPrefWidth(75);
+        botonCalcularIntervalo = boton("Calcular raíces en [a, b]", this::calcularIntervaloManual);
+        etiquetaResultadoIntervalo = new Label();
+        etiquetaResultadoIntervalo.setWrapText(true);
+        etiquetaResultadoIntervalo.setStyle(FUENTE_MONO);
+        grupoIntervaloManual = new HBox(8, new Label("Intervalo: ["), campoA, new Label(", "), campoB, new Label("]"), botonCalcularIntervalo);
+        grupoIntervaloManual.setAlignment(Pos.CENTER_LEFT);
+        // Bloque del intervalo manual
+        VBox bloqueIntervalo = new VBox(6, grupoIntervaloManual, etiquetaResultadoIntervalo);
+
+        // Bloque general de Sturm: puntos alfa arriba e intervalo manual abajo
+        bloqueSturm = new VBox(10, grupoSturm, bloqueIntervalo);
+        bloqueSturm.setAlignment(Pos.CENTER_LEFT);
+        grupoIntervaloManual.setStyle("-fx-font-size: 14px;");
+        etiquetaResultadoIntervalo.setStyle("-fx-font-size: 14px;");
+
         // Enter (la tecla) en cualquier campo ejecuta el calculo
         campo.setOnAction(e -> calcular());
         campoQ.setOnAction(e -> calcular());
@@ -279,7 +309,7 @@ public class MainFrame extends Application {
         formulario.add(etiquetaQ, 0, 1);
         formulario.add(campoQ, 1, 1);
         formulario.add(parametrosNewton, 0, 2, 2, 1);
-        formulario.add(grupoSturm, 0, 3, 2, 1);   
+        formulario.add(bloqueSturm, 0, 3, 2, 1);   
         GridPane.setHgrow(campo, Priority.ALWAYS);
         GridPane.setHgrow(campoQ, Priority.ALWAYS);
 
@@ -433,12 +463,12 @@ public class MainFrame extends Application {
         etiquetaCota.setManaged(cotas);
         metodoCota.setVisible(cotas);
         metodoCota.setManaged(cotas);
-        grupoSturm.setVisible(sturm);            
-        grupoSturm.setManaged(sturm);            
-        botonIntervalo.setVisible(sturm);        
-        botonIntervalo.setManaged(sturm);        
-        etiquetaIntervalo.setVisible(sturm);     
-        etiquetaIntervalo.setManaged(sturm);     
+        bloqueSturm.setVisible(sturm);
+        bloqueSturm.setManaged(sturm);
+        botonIntervalo.setVisible(sturm);
+        botonIntervalo.setManaged(sturm);
+        etiquetaIntervalo.setVisible(sturm);
+        etiquetaIntervalo.setManaged(sturm); 
         if (!horner && activo == campoQ) {
             activo = campo;
         }
@@ -1798,6 +1828,49 @@ public class MainFrame extends Application {
         String s = new AnalisisPolinomio().aFraccion(v);
         if (s.contains("/") && s.length() > 9) return formato(v);   // fracciones muy largas: mejor decimal
         return s.contains(".") ? formato(v) : s;
+    }
+
+    private void calcularIntervaloManual() {
+        error.setText("");
+        etiquetaResultadoIntervalo.setText("");
+
+        try {
+            String t = campo.getText().trim();
+
+            if (t.isEmpty()) {
+                throw new IllegalArgumentException("Falta ingresar P(x).");
+            }
+
+            if (campoA.getText().trim().isEmpty() || campoB.getText().trim().isEmpty()) {
+                throw new IllegalArgumentException("Ingresá los dos extremos del intervalo.");
+            }
+
+            Polinomio p = parsear(t, "P(x)");
+
+            double a = Parser.parse(campoA.getText().trim()).valorConstante();
+            double b = Parser.parse(campoB.getText().trim()).valorConstante();
+
+            if (!Double.isFinite(a) || !Double.isFinite(b)) {
+                throw new IllegalArgumentException("Los extremos deben ser números finitos.");
+            }
+
+            if (a >= b) {
+                throw new IllegalArgumentException("El extremo a debe ser menor que b.");
+            }
+
+            if (esConstante(p)) {
+                throw new ArithmeticException("P(x) es constante: no tiene raíces.");
+            }
+
+            SturmSolver st = new SturmSolver();
+
+            int cantidad = st.contarRaicesEnIntervalo(p, a, b);
+
+            etiquetaResultadoIntervalo.setText("Cantidad de raíces en (" + fraccionTexto(a) + ", " + fraccionTexto(b) + "): " + cantidad);
+
+        } catch (RuntimeException ex) {
+            error.setText("Error: " + (ex.getMessage() != null ? ex.getMessage() : ex.toString()));
+        }
     }
 
     // =====================  FIN: Sturm =====================
