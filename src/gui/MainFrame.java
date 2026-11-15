@@ -348,13 +348,8 @@ public class MainFrame extends Application {
         formulario.add(campo, 1, 0);
         formulario.add(etiquetaQ, 0, 1);
         formulario.add(campoQ, 1, 1);
-<<<<<<< Updated upstream
         formulario.add(filaParametros, 0, 2, 2, 1);
         formulario.add(bloqueSturm, 0, 3, 2, 1);
-=======
-        formulario.add(parametrosNewton, 0, 2, 2, 1);
-        formulario.add(bloqueSturm, 0, 3, 2, 1); 
->>>>>>> Stashed changes
         GridPane.setHgrow(campo, Priority.ALWAYS);
         GridPane.setHgrow(campoQ, Priority.ALWAYS);
 
