@@ -54,6 +54,7 @@ public class GraficoPolinomio extends Pane {
 
     private final Canvas canvas = new Canvas();
     private final Polinomio p;
+    private final Polinomio q;
     private final String titulo;
     private final List<Punto> puntos = new ArrayList<>();
     private final List<Banda> bandas = new ArrayList<>();
@@ -65,7 +66,12 @@ public class GraficoPolinomio extends Pane {
     private double dragX, dragMin, dragMax;
 
     public GraficoPolinomio(Polinomio p, String titulo) {
+        this(p, titulo, null);
+    }
+
+    public GraficoPolinomio(Polinomio p, String titulo, Polinomio q) {
         this.p = p;
+        this.q = q;
         this.titulo = titulo;
         setStyle("-fx-background-color: white;");
         getChildren().add(canvas);
@@ -147,6 +153,17 @@ public class GraficoPolinomio extends Pane {
         dibujar();
     }
 
+    /** Fija el rango horizontal visible del grafico. */
+    public void ajustarRango(double desde, double hasta) {
+        if (!Double.isFinite(desde) || !Double.isFinite(hasta) || desde >= hasta)
+            throw new IllegalArgumentException("El rango del gráfico no es válido.");
+        xMin = desde;
+        xMax = hasta;
+        xMinInicial = desde;
+        xMaxInicial = hasta;
+        dibujar();
+    }
+
     /** Numero sin ceros de mas (3 en vez de 3.000000). */
     public static String num(double v) {
         if (Math.abs(v) < 1e-12) return "0";
@@ -168,16 +185,21 @@ public class GraficoPolinomio extends Pane {
     /** El eje y se ajusta a la parte visible de la curva, sin dejar que los extremos aplasten las raices. */
     private void ajustarY() {
         int n = 400;
-        double[] abs = new double[n + 1];
+        Polinomio[] polinomios = q == null
+                ? new Polinomio[]{p}
+                : new Polinomio[]{p, q};
+        double[] abs = new double[polinomios.length * (n + 1)];
         int c = 0;
         double mn = Double.POSITIVE_INFINITY, mx = Double.NEGATIVE_INFINITY;
-        for (int i = 0; i <= n; i++) {
-            double x = xMin + i * (xMax - xMin) / n;
-            double y = p.evaluar(x);
-            if (Double.isFinite(y)) {
-                abs[c++] = Math.abs(y);
-                mn = Math.min(mn, y);
-                mx = Math.max(mx, y);
+        for (Polinomio polinomio : polinomios) {
+            for (int i = 0; i <= n; i++) {
+                double x = xMin + i * (xMax - xMin) / n;
+                double y = polinomio.evaluar(x);
+                if (Double.isFinite(y)) {
+                    abs[c++] = Math.abs(y);
+                    mn = Math.min(mn, y);
+                    mx = Math.max(mx, y);
+                }
             }
         }
         if (c == 0) {
@@ -273,28 +295,8 @@ public class GraficoPolinomio extends Pane {
         if (yMin <= 0 && yMax >= 0) g.strokeLine(M, py(0), M + pw, py(0));
         if (xMin <= 0 && xMax >= 0) g.strokeLine(px(0), M, px(0), M + ph);
 
-        // curva
-        g.setStroke(CURVA);
-        g.setLineWidth(2.4);
-        g.beginPath();
-        boolean empezo = false;
-        int pasos = (int) pw;
-        for (int i = 0; i <= pasos; i++) {
-            double x = xMin + i * (xMax - xMin) / pasos;
-            double y = p.evaluar(x);
-            if (!Double.isFinite(y)) {
-                empezo = false;
-                continue;
-            }
-            double Y = Math.max(-1e6, Math.min(1e6, py(y)));
-            if (!empezo) {
-                g.moveTo(M + i, Y);
-                empezo = true;
-            } else {
-                g.lineTo(M + i, Y);
-            }
-        }
-        g.stroke();
+        dibujarCurva(g, p, CURVA);
+        if (q != null) dibujarCurva(g, q, ROJO);
         g.restore();
 
         // letras de los ejes
@@ -373,6 +375,30 @@ public class GraficoPolinomio extends Pane {
         }
         g.setFill(Color.GRAY);
         g.fillText("Rueda: zoom   \u00b7   Arrastrar: mover   \u00b7   Doble clic: restablecer", M, h - 8);
+    }
+
+    private void dibujarCurva(GraphicsContext g, Polinomio polinomio, Color color) {
+        g.setStroke(color);
+        g.setLineWidth(2.4);
+        g.beginPath();
+        boolean empezo = false;
+        int pasos = (int) pw;
+        for (int i = 0; i <= pasos; i++) {
+            double x = xMin + i * (xMax - xMin) / pasos;
+            double y = polinomio.evaluar(x);
+            if (!Double.isFinite(y)) {
+                empezo = false;
+                continue;
+            }
+            double Y = Math.max(-1e6, Math.min(1e6, py(y)));
+            if (!empezo) {
+                g.moveTo(M + i, Y);
+                empezo = true;
+            } else {
+                g.lineTo(M + i, Y);
+            }
+        }
+        g.stroke();
     }
 
     /** Texto con un borde blanco para que se lea aunque pase la curva o la cuadricula por detras. */
