@@ -15,10 +15,10 @@ public final class CasosDePrueba {
     public record Caso(String operacion, String nombre, String polinomio, String divisor,
             String x0, String r0, String s0, String epsilon, String iteraciones,
             String metodoCota, String puntosSturm, String puntoEvaluacion) {
-        @Override
-        public String toString() {
-            return nombre;
-        }
+            @Override
+            public String toString() {
+               return nombre;
+            }
     }
 
     private static final List<Caso> CASOS = List.of(
